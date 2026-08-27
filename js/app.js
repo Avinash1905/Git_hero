@@ -42,6 +42,7 @@ import { renderAchievementsPage } from '../src/pages/AchievementsPage.js';
 import { renderDailyChallengePage } from '../src/pages/DailyChallengePage.js';
 import { renderSettingsPage } from '../src/pages/SettingsPage.js';
 import { renderUserManualPage, renderNotFoundPage } from '../src/pages/UserManualPage.js';
+import { GitHeroTutorialModal } from '../src/features/tutorial/GitHeroTutorialModal.js';
 
 // Auth Views
 import { renderLoginForm } from '../src/auth/views/LoginForm.js';
@@ -318,6 +319,23 @@ class GitQuestApp {
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
     document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
+
+    // Tutorial Launch Button (Accessible from Manual / Help)
+    document.getElementById('open-tutorial-btn')?.addEventListener('click', () => {
+      new GitHeroTutorialModal({
+        onComplete: () => this.navigate('gameplay', { levelId: '01' })
+      }).mount();
+    });
+
+    // First-time player tutorial onboarding
+    if ((this.currentRoute === 'dashboard' || this.currentRoute === 'hero') && AuthManager.isAuthenticated()) {
+      const tutorialModal = new GitHeroTutorialModal({
+        onComplete: () => this.navigate('gameplay', { levelId: '01' })
+      });
+      if (tutorialModal.isFirstTimePlayer()) {
+        setTimeout(() => tutorialModal.mount(), 400);
+      }
+    }
 
     // 2. Mobile Bottom Nav Links
     document.getElementById('mob-nav-dash')?.addEventListener('click', () => this.navigate('dashboard'));
