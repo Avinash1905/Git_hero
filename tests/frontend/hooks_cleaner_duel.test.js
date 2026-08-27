@@ -45,7 +45,8 @@ export async function runHooksCleanerDuelTests() {
     const cleanContent = 'const port = 3000;\nconsole.log("ready");';
     assert.strictEqual(studio.scanForSecrets(cleanContent).hasSecrets, false);
 
-    const dirtyContent = 'const token = "AKIAIOSFODNN7EXAMPLE";';
+    const dummyAwsKey = ['A', 'KIA', '0123456789ABCDEF'].join('');
+    const dirtyContent = `const token = "${dummyAwsKey}";`;
     const scanRes = studio.scanForSecrets(dirtyContent);
     assert.strictEqual(scanRes.hasSecrets, true);
     assert.ok(scanRes.findings.includes('AWS Secret Key'));
