@@ -326,9 +326,27 @@ class GitQuestApp {
     this.bindGlobalEvents();
   }
 
+  // Lightweight re-render for leaderboard search/filter/sort (no full page rebuild)
+  renderLeaderboardOnly() {
+    const viewContainer = document.getElementById('view-content-area');
+    if (!viewContainer) return;
+    const newHtml = renderLeaderboardView(this.leaderboardTab);
+    viewContainer.innerHTML = newHtml;
+    this.bindGlobalEvents();
+    // Restore search input focus and cursor position
+    const searchInput = document.getElementById('lb-search-input');
+    if (searchInput) {
+      const val = searchInput.value;
+      searchInput.focus();
+      searchInput.setSelectionRange(val.length, val.length);
+    }
+  }
+
+
   bindGlobalEvents() {
     // Top Bar Links
     document.getElementById('brand-logo-btn')?.addEventListener('click', () => this.navigate('hero'));
+
     document.getElementById('nav-main-btn')?.addEventListener('click', () => this.navigate('dashboard'));
     document.getElementById('nav-logs-btn')?.addEventListener('click', () => this.navigate('leaderboard'));
     document.getElementById('nav-map-btn')?.addEventListener('click', () => this.navigate('world-map'));
@@ -377,17 +395,65 @@ class GitQuestApp {
     } else if (this.currentRoute === 'gameplay') {
       this.bindGameplayEvents();
     } else if (this.currentRoute === 'leaderboard') {
+      // Tab switching
       document.getElementById('tab-global-btn')?.addEventListener('click', () => {
         this.leaderboardTab = 'global';
+        window._lbSearch = '';
+        window._lbFilter = 'all';
         this.render();
       });
       document.getElementById('tab-friends-btn')?.addEventListener('click', () => {
         this.leaderboardTab = 'friends';
+        window._lbSearch = '';
+        window._lbFilter = 'all';
         this.render();
       });
       document.getElementById('tab-weekly-btn')?.addEventListener('click', () => {
         this.leaderboardTab = 'weekly';
+        window._lbSearch = '';
+        window._lbFilter = 'all';
         this.render();
+      });
+
+      // Search input — live filter as user types
+      document.getElementById('lb-search-input')?.addEventListener('input', (e) => {
+        window._lbSearch = e.target.value;
+        this.renderLeaderboardOnly();
+      });
+
+      // Filter dropdown
+      document.getElementById('lb-filter-select')?.addEventListener('change', (e) => {
+        window._lbFilter = e.target.value;
+        this.renderLeaderboardOnly();
+      });
+
+      // Sort dropdown
+      document.getElementById('lb-sort-select')?.addEventListener('change', (e) => {
+        window._lbSort = e.target.value;
+        this.renderLeaderboardOnly();
+      });
+
+      // Sort direction toggle button
+      document.getElementById('lb-sort-dir-btn')?.addEventListener('click', () => {
+        window._lbSortDir = (window._lbSortDir || 'asc') === 'asc' ? 'desc' : 'asc';
+        this.renderLeaderboardOnly();
+      });
+
+      // Sortable column headers
+      document.querySelectorAll('[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-sort');
+          if (window._lbSort === key) {
+            window._lbSortDir = (window._lbSortDir || 'asc') === 'asc' ? 'desc' : 'asc';
+          } else {
+            window._lbSort = key;
+            window._lbSortDir = 'asc';
+          }
+          // Sync the sort dropdown
+          const sel = document.getElementById('lb-sort-select');
+          if (sel) sel.value = window._lbSort;
+          this.renderLeaderboardOnly();
+        });
       });
     } else if (this.currentRoute === 'daily') {
       document.getElementById('start-daily-btn')?.addEventListener('click', () => {
