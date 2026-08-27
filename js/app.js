@@ -317,6 +317,8 @@ class GitQuestApp {
     document.getElementById('nav-logs-btn')?.addEventListener('click', () => this.navigate('leaderboard'));
     document.getElementById('nav-map-btn')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
+    document.getElementById('nav-manual-btn')?.addEventListener('click', () => this.navigate('manual'));
+    document.getElementById('top-help-btn')?.addEventListener('click', () => this.navigate('manual'));
     document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
 
@@ -341,6 +343,7 @@ class GitQuestApp {
     document.getElementById('mob-nav-dash')?.addEventListener('click', () => this.navigate('dashboard'));
     document.getElementById('mob-nav-map')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('mob-nav-play')?.addEventListener('click', () => this.navigate('gameplay', { levelId: this.currentLevelId }));
+    document.getElementById('mob-nav-manual')?.addEventListener('click', () => this.navigate('manual'));
     document.getElementById('mob-nav-profile')?.addEventListener('click', () => this.navigate('profile'));
 
     // 3. Auth Form Submissions

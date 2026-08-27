@@ -27,14 +27,14 @@ export function renderTopAppBar(activeRoute = 'main', onNavigate, onOpenSettings
         <button id="nav-levels-btn" class="${activeRoute === 'levels' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
           ~/quest/levels
         </button>
-        <button id="nav-editor-btn" class="${activeRoute === 'editor' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
-          ~/quest/editor
+        <button id="nav-manual-btn" class="${activeRoute === 'manual' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
+          ~/quest/manual
         </button>
       </nav>
 
       <div class="flex items-center gap-sm">
-        <button id="top-pause-btn" title="Toggle Quick Pause" class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-variant/40">
-          <span class="material-symbols-outlined" data-icon="pause">pause</span>
+        <button id="top-help-btn" title="User Manual & Tutorial" class="${activeRoute === 'manual' ? 'text-primary' : 'text-on-surface-variant'} hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-variant/40">
+          <span class="material-symbols-outlined" data-icon="help">help</span>
         </button>
         <button id="top-settings-btn" title="Settings" class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-variant/40">
           <span class="material-symbols-outlined" data-icon="settings">settings</span>

@@ -1,6 +1,6 @@
 /**
  * Master Frontend Automated Test Suite Runner
- * Executes all 32 frontend suites and reports total pass/fail diagnostics.
+ * Executes all 43 frontend suites and reports total pass/fail diagnostics.
  */
 
 import { runAuthTests } from './auth.test.js';
@@ -35,6 +35,22 @@ import { runRemotesSearchSecurityTests } from './remotes_search_security.test.js
 import { runSubtreeMaintenanceTests } from './subtree_maintenance.test.js';
 import { runAttributesIgnoreTests } from './attributes_ignore.test.js';
 import { runAudioVisualizerTests } from './audio_visualizer.test.js';
+import { runCommandGuideTests } from './command_guide.test.js';
+import { runSolvingGuideTests } from './solving_guide.test.js';
+import { runTutorialModalTests } from './tutorial_modal.test.js';
+import { runPasswordSecurityTests } from './password_security.test.js';
+import { runSessionAuditorTests } from './session_auditor.test.js';
+import { runEngineSerializerTests } from './engine_serializer.test.js';
+import { runEngineErrorBoundaryTests } from './engine_error_boundary.test.js';
+import { runInputQueueSchedulerTests } from './input_queue_scheduler.test.js';
+import { runLevelSearchAndMilestoneTests } from './level_search_milestones.test.js';
+import { runTerminalEnhancementsTests } from './terminal_enhancements.test.js';
+import { runApiResilienceAndExportTests } from './api_resilience_export.test.js';
+import { runMfaSecurityTests } from './mfa_recovery_security.test.js';
+import { runProfileAnalyticsTests } from './profile_skill_radar.test.js';
+import { runLevelProgressionTests } from './levels_progression_engine.test.js';
+import { runVisualizersTerminalTests } from './visualizers_terminal_tools.test.js';
+import { runApiOfflineCacheTests } from './api_offline_cache.test.js';
 
 async function runAll() {
   console.log('===============================================================');
@@ -76,14 +92,30 @@ async function runAll() {
     runRemotesSearchSecurityTests,
     runSubtreeMaintenanceTests,
     runAttributesIgnoreTests,
-    runAudioVisualizerTests
+    runAudioVisualizerTests,
+    runCommandGuideTests,
+    runSolvingGuideTests,
+    runTutorialModalTests,
+    runPasswordSecurityTests,
+    runSessionAuditorTests,
+    runEngineSerializerTests,
+    runEngineErrorBoundaryTests,
+    runInputQueueSchedulerTests,
+    runLevelSearchAndMilestoneTests,
+    runTerminalEnhancementsTests,
+    runApiResilienceAndExportTests,
+    runMfaSecurityTests,
+    runProfileAnalyticsTests,
+    runLevelProgressionTests,
+    runVisualizersTerminalTests,
+    runApiOfflineCacheTests
   ];
 
   for (const suite of suites) {
     try {
       const res = await suite();
-      totalPassed += res.passed;
-      totalTests += res.total;
+      totalPassed += (res?.passed ?? 0);
+      totalTests += (res?.total ?? 0);
     } catch (err) {
       console.error('Fatal suite failure:', err);
       process.exit(1);
@@ -101,3 +133,4 @@ runAll().catch((err) => {
   console.error('Master runner encountered error:', err);
   process.exit(1);
 });
+
