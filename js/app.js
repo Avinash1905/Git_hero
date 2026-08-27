@@ -356,33 +356,26 @@ class GitQuestApp {
 
   bindGlobalEvents() {
     // Top Bar Links
-    document.getElementById('brand-logo-btn')?.addEventListener('click', () => this.navigate('hero'));
+    document.getElementById('brand-logo-btn')?.addEventListener('click', () => {
+      if (StorageService.isAuthenticated()) {
+        this.navigate('dashboard');
+      } else {
+        this.navigate('login');
+      }
+    });
     document.getElementById('nav-main-btn')?.addEventListener('click', () => this.navigate('dashboard'));
     document.getElementById('nav-logs-btn')?.addEventListener('click', () => this.navigate('leaderboard'));
     document.getElementById('nav-map-btn')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
     document.getElementById('nav-editor-btn')?.addEventListener('click', () => this.navigate('editor'));
-    document.getElementById('nav-auth-btn')?.addEventListener('click', () => {
-      if (StorageService.isAuthenticated()) {
-        StorageService.logout();
-        soundFX.playKey();
-        this.navigate('login');
-      } else {
-        this.navigate('login');
-      }
-    });
 
+    document.getElementById('top-logout-btn')?.addEventListener('click', () => {
+      StorageService.logout();
+      soundFX.playKey();
+      this.navigate('login');
+    });
     document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
-    document.getElementById('top-auth-btn')?.addEventListener('click', () => {
-      if (StorageService.isAuthenticated()) {
-        StorageService.logout();
-        soundFX.playKey();
-        this.navigate('login');
-      } else {
-        this.navigate('login');
-      }
-    });
     document.getElementById('top-pause-btn')?.addEventListener('click', () => soundFX.playKey());
     document.getElementById('top-menu-btn')?.addEventListener('click', () => this.navigate('dashboard'));
 
