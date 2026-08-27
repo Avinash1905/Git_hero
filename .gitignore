@@ -5,3 +5,17 @@ server/database/*.db-journal
 *.log
 .DS_Store
 Thumbs.db
+dist/
+build/
+coverage/
+.system_generated/
+
+# Environment Variables
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+!.example.env

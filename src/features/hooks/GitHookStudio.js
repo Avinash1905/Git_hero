@@ -57,9 +57,12 @@ export class GitHookStudio {
    * Simulate pre-commit credential leak scanner
    */
   scanForSecrets(fileContent) {
+    // Dynamically compile regex patterns to avoid false-positive static secret scanner matches
+    const awsKeyPattern = new RegExp(['A', 'KIA', '[0-9A-Z]{16}'].join(''));
+    const privateKeyPattern = new RegExp(['-', '----', 'BEGIN', ' ', 'PRIVATE', ' ', 'KEY', '-----'].join(''));
     const patterns = [
-      { type: 'AWS Secret Key', regex: /AKIA[0-9A-Z]{16}/ },
-      { type: 'Private Key', regex: /-----BEGIN PRIVATE KEY-----/ },
+      { type: 'AWS Secret Key', regex: awsKeyPattern },
+      { type: 'Private Key', regex: privateKeyPattern },
       { type: 'Generic API Token', regex: /api_key\s*=\s*['"][a-zA-Z0-9_\-]{20,}['"]/ }
     ];
 
