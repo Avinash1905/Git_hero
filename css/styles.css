@@ -1,0 +1,224 @@
+/* GitQuest Authoritative Design System Styles */
+
+:root {
+  --color-surface: #081425;
+  --color-surface-dim: #081425;
+  --color-surface-bright: #2f3a4c;
+  --color-surface-container-lowest: #040e1f;
+  --color-surface-container-low: #111c2d;
+  --color-surface-container: #152031;
+  --color-surface-container-high: #1f2a3c;
+  --color-surface-container-highest: #2a3548;
+  --color-on-surface: #d8e3fb;
+  --color-on-surface-variant: #bbcabf;
+  --color-outline: #86948a;
+  --color-outline-variant: #3c4a42;
+  --color-primary: #4edea3;
+  --color-on-primary: #003824;
+  --color-primary-container: #10b981;
+  --color-secondary: #adc6ff;
+  --color-on-secondary: #002e6a;
+  --color-secondary-container: #0566d9;
+  --color-tertiary: #ffb95f;
+  --color-on-tertiary: #472a00;
+  --color-tertiary-container: #e29100;
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-background: #081425;
+}
+
+/* Material Symbols optical styling */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  display: inline-block;
+  user-select: none;
+}
+
+.material-symbols-outlined.fill-icon,
+.material-symbols-outlined[data-fill="true"] {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Glassmorphism panel styling matching Stitch */
+.glass-panel {
+  background-color: rgba(21, 32, 49, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #334155;
+}
+
+.hud-panel {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.settings-panel {
+  background-color: rgba(21, 32, 49, 0.85);
+  border: 1px solid #3c4a42;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+}
+
+/* Background grid patterns */
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, rgba(134, 148, 138, 0.1) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(134, 148, 138, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.grid-bg {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.hero-gradient {
+  background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.15) 0%, rgba(8, 20, 37, 1) 70%);
+}
+
+/* Glow effects */
+.glow-primary {
+  box-shadow: 0 0 15px rgba(78, 222, 163, 0.35);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 15px rgba(173, 198, 255, 0.35);
+}
+
+.glow-amber {
+  box-shadow: 0 0 15px rgba(226, 145, 0, 0.35);
+}
+
+.glow-box {
+  box-shadow: 0 0 15px rgba(78, 222, 163, 0.25);
+}
+
+.glow-text {
+  text-shadow: 0 0 8px rgba(78, 222, 163, 0.6);
+}
+
+.success-glow {
+  box-shadow: 0 0 40px rgba(78, 222, 163, 0.2);
+}
+
+.pulse-glow {
+  animation: pulseGlowAnim 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlowAnim {
+  0%, 100% { box-shadow: 0 0 10px rgba(78, 222, 163, 0.3); }
+  50% { box-shadow: 0 0 22px rgba(78, 222, 163, 0.7); }
+}
+
+.pulse-node {
+  animation: pulseNodeAnim 2s infinite ease-in-out;
+}
+
+@keyframes pulseNodeAnim {
+  0%, 100% { box-shadow: 0 0 15px rgba(78, 222, 163, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 30px rgba(78, 222, 163, 0.8); transform: scale(1.05); }
+}
+
+.star-pulse {
+  animation: starPulseAnim 2s infinite alternate;
+}
+
+@keyframes starPulseAnim {
+  0% { filter: drop-shadow(0 0 5px rgba(255, 185, 95, 0.4)); transform: scale(1); }
+  100% { filter: drop-shadow(0 0 16px rgba(255, 185, 95, 0.85)); transform: scale(1.12); }
+}
+
+/* Shimmer animations */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0) 100%);
+  transform: rotate(30deg) translateX(-100%);
+  animation: shimmer 3s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { transform: rotate(30deg) translateX(-100%); }
+  100% { transform: rotate(30deg) translateX(100%); }
+}
+
+/* Terminal Cursor */
+@keyframes terminalBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: terminalBlink 1s step-end infinite;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background-color: #4edea3;
+  animation: terminalBlink 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 4px;
+}
+
+/* Grid Tile Styling */
+.grid-tile {
+  border-top: 2px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  transition: all 0.15s ease-out;
+}
+
+/* Particle system animation */
+.particle {
+  position: absolute;
+  pointer-events: none;
+  animation: floatUp linear forwards;
+  opacity: 0.7;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+  100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+}
+
+/* Map dashed line pulse */
+.map-line {
+  stroke-dasharray: 6;
+  animation: dash 30s linear infinite;
+}
+
+@keyframes dash {
+  to { stroke-dashoffset: -1000; }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #081425;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f2a3c;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4edea3;
+}
