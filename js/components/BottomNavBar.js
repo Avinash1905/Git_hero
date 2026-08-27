@@ -1,6 +1,7 @@
 // BottomNavBar Component - Suppressed on gameplay screen to keep terminal as primary interface
 
-export function renderBottomNavBar(isGameplay = false) {
+export function renderBottomNavBar(arg = false) {
+  const isGameplay = typeof arg === 'boolean' ? arg : (arg?.isGameplay || arg?.currentRoute === 'gameplay' || arg?.currentRoute === 'game');
   if (isGameplay) {
     return ''; // No bottom buttons on gameplay screen
   }
