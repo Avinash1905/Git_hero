@@ -34,6 +34,26 @@ export function renderRegisterView() {
             </p>
           </div>
 
+          <!-- Authentication Switcher: Login / Register -->
+          <div class="grid grid-cols-2 gap-1 p-1 bg-surface-container-lowest/80 rounded-xl mb-6 border border-outline-variant/30">
+            <button
+              type="button"
+              id="auth-tab-login"
+              class="py-2 text-xs font-terminal-label uppercase tracking-wider rounded-lg font-bold transition-all text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[16px]">login</span>
+              <span>Login</span>
+            </button>
+            <button
+              type="button"
+              id="auth-tab-register"
+              class="py-2 text-xs font-terminal-label uppercase tracking-wider rounded-lg font-bold transition-all bg-primary text-on-primary shadow-sm flex items-center justify-center gap-1.5 cursor-default"
+            >
+              <span class="material-symbols-outlined text-[16px]">person_add</span>
+              <span>Register</span>
+            </button>
+          </div>
+
           <!-- Status Banner (Hidden by default, used for validation errors & success) -->
           <div id="reg-status-banner" class="hidden mb-5 p-3 rounded-lg border text-xs font-terminal-code flex items-start gap-2 transition-all">
             <span id="reg-status-icon" class="material-symbols-outlined text-[18px] shrink-0"></span>

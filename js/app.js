@@ -73,6 +73,11 @@ class GitQuestApp {
     // Clean and normalize target route
     let targetRoute = (route || '').replace(/^#\/?/, '').replace(/^\//, '').trim();
 
+    if (targetRoute === 'auth') {
+      StorageService.logout();
+      targetRoute = 'login';
+    }
+
     const isAuthed = StorageService.isAuthenticated();
 
     // Authentication Route Guards:
@@ -82,7 +87,7 @@ class GitQuestApp {
         targetRoute = 'login';
       }
     } else {
-      // 2. Authenticated users should not see login or register pages; redirect to ~/quest/main ('dashboard')
+      // 2. Authenticated users: if visiting root/main or login/register, route to ~/quest/main ('dashboard')
       if (targetRoute === 'login' || targetRoute === 'register' || targetRoute === '' || targetRoute === 'main') {
         targetRoute = 'dashboard';
       }
@@ -432,6 +437,12 @@ class GitQuestApp {
       this.bindSettingsEvents();
     } else if (this.currentRoute === 'editor') {
       this.bindEditorEvents();
+    } else if (this.currentRoute === 'profile') {
+      document.getElementById('profile-logout-btn')?.addEventListener('click', () => {
+        StorageService.logout();
+        soundFX.playKey();
+        this.navigate('login');
+      });
     } else if (this.currentRoute === 'login') {
       this.bindLoginEvents();
     } else if (this.currentRoute === 'register') {
@@ -463,6 +474,9 @@ class GitQuestApp {
 
     // Switch to register page
     document.getElementById('login-to-reg-link')?.addEventListener('click', () => {
+      this.navigate('register');
+    });
+    document.getElementById('auth-tab-register')?.addEventListener('click', () => {
       this.navigate('register');
     });
 
@@ -646,6 +660,9 @@ class GitQuestApp {
 
     // Switch to login page
     document.getElementById('reg-to-login-link')?.addEventListener('click', () => {
+      this.navigate('login');
+    });
+    document.getElementById('auth-tab-login')?.addEventListener('click', () => {
       this.navigate('login');
     });
 

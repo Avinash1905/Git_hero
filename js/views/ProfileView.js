@@ -148,6 +148,22 @@ export function renderProfileView() {
           </div>
         </div>
       </section>
+
+      <!-- Operator Session Management -->
+      <section class="glass-panel rounded-xl p-md flex flex-col sm:flex-row items-center justify-between gap-md border border-outline-variant/30 mt-lg">
+        <div>
+          <h3 class="text-terminal-label font-terminal-label text-on-surface font-bold text-sm">Operator Session</h3>
+          <p class="text-xs text-on-surface-variant font-terminal-code">Signed in as <span class="text-primary font-bold">${player.username}</span></p>
+        </div>
+        <button
+          type="button"
+          id="profile-logout-btn"
+          class="px-4 py-2.5 rounded-lg bg-error-container/30 text-error hover:bg-error-container/60 border border-error/40 text-xs font-terminal-label uppercase tracking-wider flex items-center gap-2 transition-colors cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px]">logout</span>
+          <span>[SWITCH OPERATOR / LOGOUT]</span>
+        </button>
+      </section>
     </main>
   `;
 }
