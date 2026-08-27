@@ -24,6 +24,8 @@ import { renderAchievementsView } from './views/AchievementsView.js';
 import { renderDailyChallengeView } from './views/DailyChallengeView.js';
 import { renderSettingsView } from './views/SettingsView.js';
 import { renderLevelEditorView, LevelEditorController } from './views/LevelEditorView.js';
+import { renderLoginView } from './views/LoginView.js';
+import { renderRegisterView } from './views/RegisterView.js';
 
 class GitQuestApp {
   constructor() {
@@ -270,11 +272,17 @@ class GitQuestApp {
 
     // 2. Render Main View Content
     let mainViewHtml = '';
-    const isGameplay = this.currentRoute === 'gameplay';
+    const isGameplay = this.currentRoute === 'gameplay' || this.currentRoute === 'login' || this.currentRoute === 'register';
 
     switch (this.currentRoute) {
       case 'hero':
         mainViewHtml = renderHeroView();
+        break;
+      case 'login':
+        mainViewHtml = renderLoginView();
+        break;
+      case 'register':
+        mainViewHtml = renderRegisterView();
         break;
       case 'dashboard':
       case 'main':
@@ -334,9 +342,11 @@ class GitQuestApp {
     document.getElementById('nav-map-btn')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
     document.getElementById('nav-editor-btn')?.addEventListener('click', () => this.navigate('editor'));
+    document.getElementById('nav-auth-btn')?.addEventListener('click', () => this.navigate('login'));
 
     document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
+    document.getElementById('top-auth-btn')?.addEventListener('click', () => this.navigate('login'));
     document.getElementById('top-pause-btn')?.addEventListener('click', () => soundFX.playKey());
     document.getElementById('top-menu-btn')?.addEventListener('click', () => this.navigate('dashboard'));
 
@@ -350,6 +360,7 @@ class GitQuestApp {
     if (this.currentRoute === 'hero') {
       document.getElementById('hero-play-btn')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
       document.getElementById('hero-explore-btn')?.addEventListener('click', () => this.navigate('levels'));
+      document.getElementById('hero-auth-btn')?.addEventListener('click', () => this.navigate('login'));
     } else if (this.currentRoute === 'dashboard' || this.currentRoute === 'main') {
       document.getElementById('dash-continue-card')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
       document.getElementById('dash-play-btn')?.addEventListener('click', (e) => {
@@ -397,6 +408,317 @@ class GitQuestApp {
       this.bindSettingsEvents();
     } else if (this.currentRoute === 'editor') {
       this.bindEditorEvents();
+    } else if (this.currentRoute === 'login') {
+      this.bindLoginEvents();
+    } else if (this.currentRoute === 'register') {
+      this.bindRegisterEvents();
+    }
+  }
+
+  bindLoginEvents() {
+    const form = document.getElementById('login-form');
+    const nameInput = document.getElementById('login-name');
+    const passwordInput = document.getElementById('login-password');
+
+    const nameError = document.getElementById('login-name-error');
+    const passwordError = document.getElementById('login-password-error');
+    const statusBanner = document.getElementById('login-status-banner');
+    const statusIcon = document.getElementById('login-status-icon');
+    const statusText = document.getElementById('login-status-text');
+
+    // Toggle password visibility
+    const togglePwdBtn = document.getElementById('login-toggle-pwd-btn');
+    if (togglePwdBtn && passwordInput) {
+      togglePwdBtn.addEventListener('click', () => {
+        const isPwd = passwordInput.type === 'password';
+        passwordInput.type = isPwd ? 'text' : 'password';
+        const icon = togglePwdBtn.querySelector('span');
+        if (icon) icon.textContent = isPwd ? 'visibility_off' : 'visibility';
+      });
+    }
+
+    // Switch to register page
+    document.getElementById('login-to-reg-link')?.addEventListener('click', () => {
+      this.navigate('register');
+    });
+
+    // Forgot Password clickable link
+    const forgotModal = document.getElementById('login-forgot-modal');
+    document.getElementById('login-forgot-pwd-btn')?.addEventListener('click', () => {
+      soundFX.playKey();
+      if (forgotModal) {
+        forgotModal.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('login-close-modal-btn')?.addEventListener('click', () => {
+      if (forgotModal) {
+        forgotModal.classList.add('hidden');
+      }
+    });
+
+    // Login with Google button
+    document.getElementById('login-google-btn')?.addEventListener('click', () => {
+      soundFX.playKey();
+      if (statusBanner && statusText && statusIcon) {
+        statusBanner.className = 'mb-5 p-3 rounded-lg border border-secondary/50 bg-secondary/10 text-secondary text-xs font-terminal-code flex items-start gap-2 shadow-md';
+        statusIcon.textContent = 'info';
+        statusText.innerHTML = `<strong>Google Authentication:</strong> UI preview only. External OAuth provider not connected.`;
+        statusBanner.classList.remove('hidden');
+      }
+    });
+
+    // Real-time input error clearing
+    const clearError = (inputEl, errorEl) => {
+      if (errorEl) errorEl.classList.add('hidden');
+      if (inputEl) {
+        inputEl.classList.remove('border-error');
+        inputEl.classList.add('border-outline-variant/50');
+      }
+      if (statusBanner && statusBanner.classList.contains('border-error/50')) {
+        statusBanner.classList.add('hidden');
+      }
+    };
+
+    nameInput?.addEventListener('input', () => clearError(nameInput, nameError));
+    passwordInput?.addEventListener('input', () => clearError(passwordInput, passwordError));
+
+    // Form submit validation
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        let isValid = true;
+        const nameVal = nameInput ? nameInput.value.trim() : '';
+        const pwdVal = passwordInput ? passwordInput.value : '';
+
+        // Validate Name
+        if (!nameVal) {
+          isValid = false;
+          if (nameError) {
+            nameError.querySelector('.error-msg').textContent = 'Operator name is required.';
+            nameError.classList.remove('hidden');
+          }
+          nameInput?.classList.add('border-error');
+          nameInput?.classList.remove('border-outline-variant/50');
+        } else {
+          clearError(nameInput, nameError);
+        }
+
+        // Validate Password
+        if (!pwdVal) {
+          isValid = false;
+          if (passwordError) {
+            passwordError.querySelector('.error-msg').textContent = 'Password is required.';
+            passwordError.classList.remove('hidden');
+          }
+          passwordInput?.classList.add('border-error');
+          passwordInput?.classList.remove('border-outline-variant/50');
+        } else {
+          clearError(passwordInput, passwordError);
+        }
+
+        if (!isValid) {
+          soundFX.playError();
+          if (statusBanner && statusText && statusIcon) {
+            statusBanner.className = 'mb-5 p-3 rounded-lg border border-error/50 bg-error-container/30 text-error text-xs font-terminal-code flex items-start gap-2';
+            statusIcon.textContent = 'error';
+            statusText.textContent = 'Authentication failed: Please provide both operator name and password.';
+            statusBanner.classList.remove('hidden');
+          }
+          return;
+        }
+
+        // Valid Submission
+        soundFX.playSuccess();
+        const submitBtn = document.getElementById('login-submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        }
+
+        if (statusBanner && statusText && statusIcon) {
+          statusBanner.className = 'mb-5 p-3 rounded-lg border border-primary/50 bg-primary/10 text-primary text-xs font-terminal-code flex items-start gap-2 shadow-[0_0_15px_rgba(78,222,163,0.2)]';
+          statusIcon.textContent = 'verified_user';
+          statusText.innerHTML = `<strong>Access Granted.</strong> Welcome, operator <code>${nameVal}</code>! Entering GitHero...`;
+          statusBanner.classList.remove('hidden');
+        }
+
+        setTimeout(() => {
+          this.navigate('dashboard');
+        }, 1000);
+      });
+    }
+  }
+
+  bindRegisterEvents() {
+    const form = document.getElementById('register-form');
+    const nameInput = document.getElementById('reg-name');
+    const emailInput = document.getElementById('reg-email');
+    const passwordInput = document.getElementById('reg-password');
+    const confirmInput = document.getElementById('reg-confirm-password');
+
+    const nameError = document.getElementById('reg-name-error');
+    const emailError = document.getElementById('reg-email-error');
+    const passwordError = document.getElementById('reg-password-error');
+    const confirmError = document.getElementById('reg-confirm-error');
+    const statusBanner = document.getElementById('reg-status-banner');
+    const statusIcon = document.getElementById('reg-status-icon');
+    const statusText = document.getElementById('reg-status-text');
+
+    // Toggle password visibility
+    const togglePwdBtn = document.getElementById('reg-toggle-pwd-btn');
+    if (togglePwdBtn && passwordInput) {
+      togglePwdBtn.addEventListener('click', () => {
+        const isPwd = passwordInput.type === 'password';
+        passwordInput.type = isPwd ? 'text' : 'password';
+        const icon = togglePwdBtn.querySelector('span');
+        if (icon) icon.textContent = isPwd ? 'visibility_off' : 'visibility';
+      });
+    }
+
+    const toggleConfirmBtn = document.getElementById('reg-toggle-confirm-pwd-btn');
+    if (toggleConfirmBtn && confirmInput) {
+      toggleConfirmBtn.addEventListener('click', () => {
+        const isPwd = confirmInput.type === 'password';
+        confirmInput.type = isPwd ? 'text' : 'password';
+        const icon = toggleConfirmBtn.querySelector('span');
+        if (icon) icon.textContent = isPwd ? 'visibility_off' : 'visibility';
+      });
+    }
+
+    // Switch to login page
+    document.getElementById('reg-to-login-link')?.addEventListener('click', () => {
+      this.navigate('login');
+    });
+
+    // Real-time input error clearing
+    const clearError = (inputEl, errorEl) => {
+      if (errorEl) errorEl.classList.add('hidden');
+      if (inputEl) {
+        inputEl.classList.remove('border-error');
+        inputEl.classList.add('border-outline-variant/50');
+      }
+      if (statusBanner && statusBanner.classList.contains('border-error/50')) {
+        statusBanner.classList.add('hidden');
+      }
+    };
+
+    nameInput?.addEventListener('input', () => clearError(nameInput, nameError));
+    emailInput?.addEventListener('input', () => clearError(emailInput, emailError));
+    passwordInput?.addEventListener('input', () => clearError(passwordInput, passwordError));
+    confirmInput?.addEventListener('input', () => clearError(confirmInput, confirmError));
+
+    // Form submit validation
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        let isValid = true;
+        const nameVal = nameInput ? nameInput.value.trim() : '';
+        const emailVal = emailInput ? emailInput.value.trim() : '';
+        const pwdVal = passwordInput ? passwordInput.value : '';
+        const confirmVal = confirmInput ? confirmInput.value : '';
+
+        // Validate Name
+        if (!nameVal) {
+          isValid = false;
+          if (nameError) {
+            nameError.querySelector('.error-msg').textContent = 'Operator name is required.';
+            nameError.classList.remove('hidden');
+          }
+          nameInput?.classList.add('border-error');
+          nameInput?.classList.remove('border-outline-variant/50');
+        } else {
+          clearError(nameInput, nameError);
+        }
+
+        // Validate Email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailVal) {
+          isValid = false;
+          if (emailError) {
+            emailError.querySelector('.error-msg').textContent = 'Email address is required.';
+            emailError.classList.remove('hidden');
+          }
+          emailInput?.classList.add('border-error');
+          emailInput?.classList.remove('border-outline-variant/50');
+        } else if (!emailRegex.test(emailVal)) {
+          isValid = false;
+          if (emailError) {
+            emailError.querySelector('.error-msg').textContent = 'Please enter a valid email address (e.g. name@domain.com).';
+            emailError.classList.remove('hidden');
+          }
+          emailInput?.classList.add('border-error');
+          emailInput?.classList.remove('border-outline-variant/50');
+        } else {
+          clearError(emailInput, emailError);
+        }
+
+        // Validate Password
+        if (!pwdVal) {
+          isValid = false;
+          if (passwordError) {
+            passwordError.querySelector('.error-msg').textContent = 'Password is required.';
+            passwordError.classList.remove('hidden');
+          }
+          passwordInput?.classList.add('border-error');
+          passwordInput?.classList.remove('border-outline-variant/50');
+        } else {
+          clearError(passwordInput, passwordError);
+        }
+
+        // Validate Confirm Password
+        if (!confirmVal) {
+          isValid = false;
+          if (confirmError) {
+            confirmError.querySelector('.error-msg').textContent = 'Confirm password is required.';
+            confirmError.classList.remove('hidden');
+          }
+          confirmInput?.classList.add('border-error');
+          confirmInput?.classList.remove('border-outline-variant/50');
+        } else if (pwdVal !== confirmVal) {
+          isValid = false;
+          if (confirmError) {
+            confirmError.querySelector('.error-msg').textContent = 'Passwords do not match.';
+            confirmError.classList.remove('hidden');
+          }
+          confirmInput?.classList.add('border-error');
+          confirmInput?.classList.remove('border-outline-variant/50');
+        } else {
+          clearError(confirmInput, confirmError);
+        }
+
+        if (!isValid) {
+          soundFX.playError();
+          if (statusBanner && statusText && statusIcon) {
+            statusBanner.className = 'mb-5 p-3 rounded-lg border border-error/50 bg-error-container/30 text-error text-xs font-terminal-code flex items-start gap-2';
+            statusIcon.textContent = 'error';
+            statusText.textContent = 'Validation error: Please resolve the highlighted fields above.';
+            statusBanner.classList.remove('hidden');
+          }
+          return;
+        }
+
+        // Valid Registration Submission
+        soundFX.playSuccess();
+        const submitBtn = document.getElementById('reg-submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        }
+
+        if (statusBanner && statusText && statusIcon) {
+          statusBanner.className = 'mb-5 p-3 rounded-lg border border-primary/50 bg-primary/10 text-primary text-xs font-terminal-code flex items-start gap-2 shadow-[0_0_15px_rgba(78,222,163,0.2)]';
+          statusIcon.textContent = 'check_circle';
+          statusText.innerHTML = `<strong>Account initialized!</strong> Registration successful. Redirecting to login...`;
+          statusBanner.classList.remove('hidden');
+        }
+
+        setTimeout(() => {
+          this.navigate('login');
+        }, 1500);
+      });
     }
   }
 
