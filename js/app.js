@@ -523,13 +523,47 @@ class GitQuestApp {
           if (statusBanner && statusText && statusIcon) {
             statusBanner.className = 'mb-5 p-3 rounded-lg border border-error/50 bg-error-container/30 text-error text-xs font-terminal-code flex items-start gap-2';
             statusIcon.textContent = 'error';
-            statusText.textContent = 'Authentication failed: Please provide both operator name and password.';
+            statusText.textContent = 'Validation error: Please fill in all required fields.';
             statusBanner.classList.remove('hidden');
           }
           return;
         }
 
-        // Valid Submission
+        // 1. Get the registered user credentials from frontend storage
+        const registeredUser = StorageService.getRegisteredUser();
+
+        // 2. Check if a registered user exists
+        if (!registeredUser || !registeredUser.name || !registeredUser.password) {
+          soundFX.playError();
+          if (statusBanner && statusText && statusIcon) {
+            statusBanner.className = 'mb-5 p-3 rounded-lg border border-error/50 bg-error-container/30 text-error text-xs font-terminal-code flex items-start gap-2';
+            statusIcon.textContent = 'error';
+            statusText.textContent = 'No registered account found. Please register first.';
+            statusBanner.classList.remove('hidden');
+          }
+          return;
+        }
+
+        // 3. Exact credential comparison against registered credentials
+        const isNameMatch = (nameVal === registeredUser.name);
+        const isPasswordMatch = (pwdVal === registeredUser.password);
+
+        if (!isNameMatch || !isPasswordMatch) {
+          soundFX.playError();
+          if (statusBanner && statusText && statusIcon) {
+            statusBanner.className = 'mb-5 p-3 rounded-lg border border-error/50 bg-error-container/30 text-error text-xs font-terminal-code flex items-start gap-2';
+            statusIcon.textContent = 'error';
+            statusText.textContent = 'Incorrect name or password';
+            statusBanner.classList.remove('hidden');
+          }
+          nameInput?.classList.add('border-error');
+          nameInput?.classList.remove('border-outline-variant/50');
+          passwordInput?.classList.add('border-error');
+          passwordInput?.classList.remove('border-outline-variant/50');
+          return;
+        }
+
+        // 4. Valid Credentials: Login Successful
         soundFX.playSuccess();
         const submitBtn = document.getElementById('login-submit-btn');
         if (submitBtn) {
@@ -540,8 +574,17 @@ class GitQuestApp {
         if (statusBanner && statusText && statusIcon) {
           statusBanner.className = 'mb-5 p-3 rounded-lg border border-primary/50 bg-primary/10 text-primary text-xs font-terminal-code flex items-start gap-2 shadow-[0_0_15px_rgba(78,222,163,0.2)]';
           statusIcon.textContent = 'verified_user';
-          statusText.innerHTML = `<strong>Access Granted.</strong> Welcome, operator <code>${nameVal}</code>! Entering GitHero...`;
+          statusText.innerHTML = `<strong>Login Successful!</strong> Access granted for operator <code>${nameVal}</code>. Initializing game session...`;
           statusBanner.classList.remove('hidden');
+        }
+
+        // Update active player profile name in user state
+        try {
+          const userState = StorageService.load();
+          userState.player.username = registeredUser.name;
+          StorageService.save(userState);
+        } catch (err) {
+          console.warn('Could not update active player username', err);
         }
 
         setTimeout(() => {
@@ -707,6 +750,15 @@ class GitQuestApp {
           submitBtn.disabled = true;
           submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
         }
+
+        // Save registered user credentials to frontend storage
+        const userData = {
+          name: nameVal,
+          email: emailVal,
+          password: pwdVal,
+          registeredAt: new Date().toISOString()
+        };
+        StorageService.setRegisteredUser(userData);
 
         if (statusBanner && statusText && statusIcon) {
           statusBanner.className = 'mb-5 p-3 rounded-lg border border-primary/50 bg-primary/10 text-primary text-xs font-terminal-code flex items-start gap-2 shadow-[0_0_15px_rgba(78,222,163,0.2)]';

@@ -1,6 +1,7 @@
 // StorageService: local state persistence for player profile, levels, settings, and progress
 
 const STORAGE_KEY = 'gitquest_user_state_v2';
+const AUTH_STORAGE_KEY = 'githero_registered_user';
 
 const DEFAULT_STATE = {
   player: {
@@ -129,5 +130,35 @@ export class StorageService {
     state.settings = { ...state.settings, ...settings };
     this.save(state);
     return state.settings;
+  }
+
+  static getRegisteredUser() {
+    try {
+      const data = localStorage.getItem(AUTH_STORAGE_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      console.warn('StorageService getRegisteredUser failed', e);
+      return null;
+    }
+  }
+
+  static setRegisteredUser(userData) {
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+      return true;
+    } catch (e) {
+      console.warn('StorageService setRegisteredUser failed', e);
+      return false;
+    }
+  }
+
+  static clearRegisteredUser() {
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return true;
+    } catch (e) {
+      console.warn('StorageService clearRegisteredUser failed', e);
+      return false;
+    }
   }
 }
