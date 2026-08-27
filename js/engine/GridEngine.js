@@ -1,4 +1,7 @@
-// GridEngine: Sokoban Git Physics and Interactive Tile Rules
+/**
+ * GridEngine: Sokoban Git Physics and Interactive Tile Rules
+ * Powered by GitQuest Directional Physics & Pull Solvers
+ */
 
 import { soundFX } from '../audio.js';
 
@@ -9,15 +12,16 @@ export class GridEngine {
   }
 
   isWall(x, y) {
-    // Boundary check
-    if (x < 0 || x >= this.state.gridSize || y < 0 || y >= this.state.gridSize) {
+    const w = this.state.width || this.state.gridSize || 6;
+    const h = this.state.height || this.state.gridSize || 6;
+    if (x < 0 || x >= w || y < 0 || y >= h) {
       return true;
     }
-    return this.state.walls.some(w => w.x === x && w.y === y);
+    return this.state.walls.some(wall => wall.x === x && wall.y === y);
   }
 
   isHazard(x, y) {
-    return this.state.hazards.some(h => h.x === x && h.y === y);
+    return (this.state.hazards || []).some(h => h.x === x && h.y === y);
   }
 
   movePlayer(dx, dy) {
@@ -40,7 +44,6 @@ export class GridEngine {
 
     // Check if moving into box
     if (newX === this.state.box.x && newY === this.state.box.y) {
-      // Try to push box
       const boxNewX = this.state.box.x + dx;
       const boxNewY = this.state.box.y + dy;
 
@@ -82,7 +85,7 @@ export class GridEngine {
   }
 
   moveDirection(dir) {
-    const d = dir.toLowerCase();
+    const d = (dir || '').toLowerCase();
     if (d === 'left') {
       return this.movePlayer(-1, 0);
     } else if (d === 'right') {
@@ -96,7 +99,6 @@ export class GridEngine {
   }
 
   gitPush() {
-    // Determine target based on player facing direction
     let dx = 0;
     let dy = 0;
     if (this.state.player.dir === 'right') dx = 1;
