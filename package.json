@@ -1,0 +1,20 @@
+{
+  "name": "git_hero",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "test": "node tests/integration.test.js"
+  },
+  "bugs": {
+    "url": "https://github.com/Avinash1905/Git_hero/issues"
+  },
+  "homepage": "https://github.com/Avinash1905/Git_hero#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
