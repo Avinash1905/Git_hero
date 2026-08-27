@@ -1,38 +1,10 @@
-// TopAppBar Component - Aligned with GitQuest Navigation Hierarchy
-import { StorageService } from '../services/StorageService.js';
-
+// TopAppBar Component - 100% faithful to Stitch game design
 export function renderTopAppBar(activeRoute = 'main', onNavigate, onOpenSettings) {
   const avatarUrl = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBDud6okIV02jhmDlAPEHxgYXcDNc2q1nsOHBV3pwTdA_ggOX2dzSjnWA_qfp7oeCXrhLG7W3rDWPQ4NwC7RUAeywZ753egcw2iJitcVtN5DOJRewUcoo4pYrSG0YJ8cUUYVbJ3YzTX7ND9ZlBAw0QJUSZj-SnOk2PRX5n9209agFlczi_Sb3C2MCIe-0qHJlPtIFeLmWypXAd8L431J07JqHbYlHoDEANVtXYddeAxPurorUqmvW8';
 
   const isMain = activeRoute === 'dashboard' || activeRoute === 'hero' || activeRoute === 'main';
   const isLogs = activeRoute === 'leaderboard' || activeRoute === 'achievements' || activeRoute === 'profile';
-  const isAuthed = StorageService.isAuthenticated();
 
-  // If user is not authenticated (on login or register screen):
-  // Render clean brand header without protected quest links
-  if (!isAuthed) {
-    return `
-      <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-hud-margin h-16 bg-surface/80 backdrop-blur-xl bg-surface-container-high/80 border-b border-outline-variant/30 shadow-md">
-        <div class="flex items-center gap-md">
-          <button id="brand-logo-btn" class="text-headline-sm font-headline-sm font-bold text-primary tracking-tighter hover:opacity-90 transition-opacity flex items-center gap-2">
-            GitQuest
-          </button>
-        </div>
-        <div class="flex items-center gap-2 text-xs font-terminal-code text-on-surface-variant">
-          <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-          <span class="text-primary font-bold">SYSTEM ACTIVE</span>
-        </div>
-      </header>
-    `;
-  }
-
-  // When logged in (at ~/quest/main and all game routes):
-  // Render the authoritative Top Navigation:
-  // ├── ~/quest/main
-  // ├── ~/quest/logs
-  // ├── ~/quest/world-map
-  // ├── ~/quest/levels
-  // └── ~/quest/editor
   return `
     <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-hud-margin h-16 bg-surface/80 backdrop-blur-xl bg-surface-container-high/80 border-b border-outline-variant/30 shadow-md">
       <div class="flex items-center gap-md">
@@ -60,9 +32,6 @@ export function renderTopAppBar(activeRoute = 'main', onNavigate, onOpenSettings
       </nav>
 
       <div class="flex items-center gap-sm">
-        <button id="top-logout-btn" title="Sign Out" class="text-on-surface-variant hover:text-error transition-colors p-sm rounded-full hover:bg-surface-variant/40">
-          <span class="material-symbols-outlined" data-icon="logout">logout</span>
-        </button>
         <button id="top-pause-btn" title="Toggle Quick Pause" class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-variant/40">
           <span class="material-symbols-outlined" data-icon="pause">pause</span>
         </button>

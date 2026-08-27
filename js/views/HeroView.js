@@ -30,10 +30,6 @@ export function renderHeroView(onPlay, onExplore) {
             <button id="hero-explore-btn" class="px-xl py-md bg-surface-container-high text-on-surface border border-outline-variant/50 text-terminal-label font-terminal-label uppercase tracking-widest rounded-lg hover:bg-surface-variant transition-colors duration-200">
               [EXPLORE LEVELS]
             </button>
-
-            <button id="hero-auth-btn" class="px-xl py-md bg-surface-container-high text-primary border border-primary/40 text-terminal-label font-terminal-label uppercase tracking-widest rounded-lg hover:bg-surface-variant hover:border-primary transition-all duration-200">
-              [SIGN IN / REGISTER]
-            </button>
           </div>
         </div>
 

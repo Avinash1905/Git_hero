@@ -287,12 +287,13 @@ class GitQuestApp {
     const appRoot = document.getElementById('app-root');
     if (!appRoot) return;
 
-    // 1. Render Top App Bar
-    const topBarHtml = renderTopAppBar(this.currentRoute);
+    // 1. Render Top App Bar (ONLY when authenticated and NOT on login/register screens)
+    const isAuthRoute = this.currentRoute === 'login' || this.currentRoute === 'register';
+    const topBarHtml = !isAuthRoute ? renderTopAppBar(this.currentRoute) : '';
 
     // 2. Render Main View Content
     let mainViewHtml = '';
-    const isGameplay = this.currentRoute === 'gameplay' || this.currentRoute === 'login' || this.currentRoute === 'register';
+    const isGameplay = this.currentRoute === 'gameplay' || isAuthRoute;
 
     switch (this.currentRoute) {
       case 'hero':
@@ -369,11 +370,6 @@ class GitQuestApp {
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
     document.getElementById('nav-editor-btn')?.addEventListener('click', () => this.navigate('editor'));
 
-    document.getElementById('top-logout-btn')?.addEventListener('click', () => {
-      StorageService.logout();
-      soundFX.playKey();
-      this.navigate('login');
-    });
     document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
     document.getElementById('top-pause-btn')?.addEventListener('click', () => soundFX.playKey());
@@ -389,7 +385,6 @@ class GitQuestApp {
     if (this.currentRoute === 'hero') {
       document.getElementById('hero-play-btn')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
       document.getElementById('hero-explore-btn')?.addEventListener('click', () => this.navigate('levels'));
-      document.getElementById('hero-auth-btn')?.addEventListener('click', () => this.navigate('login'));
     } else if (this.currentRoute === 'dashboard' || this.currentRoute === 'main') {
       document.getElementById('dash-continue-card')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
       document.getElementById('dash-play-btn')?.addEventListener('click', (e) => {
