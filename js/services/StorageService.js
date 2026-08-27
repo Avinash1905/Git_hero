@@ -2,6 +2,7 @@
 
 const STORAGE_KEY = 'gitquest_user_state_v2';
 const AUTH_STORAGE_KEY = 'githero_registered_user';
+const AUTH_SESSION_KEY = 'githero_auth_session';
 
 const DEFAULT_STATE = {
   player: {
@@ -160,5 +161,32 @@ export class StorageService {
       console.warn('StorageService clearRegisteredUser failed', e);
       return false;
     }
+  }
+
+  static isAuthenticated() {
+    try {
+      return localStorage.getItem(AUTH_SESSION_KEY) === 'true';
+    } catch (e) {
+      console.warn('StorageService isAuthenticated failed', e);
+      return false;
+    }
+  }
+
+  static setAuthenticated(isAuth = true) {
+    try {
+      if (isAuth) {
+        localStorage.setItem(AUTH_SESSION_KEY, 'true');
+      } else {
+        localStorage.removeItem(AUTH_SESSION_KEY);
+      }
+      return true;
+    } catch (e) {
+      console.warn('StorageService setAuthenticated failed', e);
+      return false;
+    }
+  }
+
+  static logout() {
+    this.setAuthenticated(false);
   }
 }

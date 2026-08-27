@@ -1,10 +1,12 @@
 // TopAppBar Component - 100% faithful to Stitch design
+import { StorageService } from '../services/StorageService.js';
 
 export function renderTopAppBar(activeRoute = 'main', onNavigate, onOpenSettings) {
   const avatarUrl = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBDud6okIV02jhmDlAPEHxgYXcDNc2q1nsOHBV3pwTdA_ggOX2dzSjnWA_qfp7oeCXrhLG7W3rDWPQ4NwC7RUAeywZ753egcw2iJitcVtN5DOJRewUcoo4pYrSG0YJ8cUUYVbJ3YzTX7ND9ZlBAw0QJUSZj-SnOk2PRX5n9209agFlczi_Sb3C2MCIe-0qHJlPtIFeLmWypXAd8L431J07JqHbYlHoDEANVtXYddeAxPurorUqmvW8';
 
   const isMain = activeRoute === 'dashboard' || activeRoute === 'hero' || activeRoute === 'main';
   const isLogs = activeRoute === 'leaderboard' || activeRoute === 'achievements' || activeRoute === 'profile';
+  const isAuthed = StorageService.isAuthenticated();
 
   return `
     <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-hud-margin h-16 bg-surface/80 backdrop-blur-xl bg-surface-container-high/80 border-b border-outline-variant/30 shadow-md">
@@ -30,14 +32,14 @@ export function renderTopAppBar(activeRoute = 'main', onNavigate, onOpenSettings
         <button id="nav-editor-btn" class="${activeRoute === 'editor' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
           ~/quest/editor
         </button>
-        <button id="nav-auth-btn" class="${activeRoute === 'login' || activeRoute === 'register' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
-          ~/auth/login
+        <button id="nav-auth-btn" class="${isAuthed ? 'text-on-surface-variant font-medium pb-1 hover:text-error' : (activeRoute === 'login' || activeRoute === 'register' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50')} text-terminal-label font-terminal-label transition-colors">
+          ${isAuthed ? '~/auth/logout' : '~/auth/login'}
         </button>
       </nav>
 
       <div class="flex items-center gap-sm">
-        <button id="top-auth-btn" title="Login / Register" class="${activeRoute === 'login' || activeRoute === 'register' ? 'text-primary' : 'text-on-surface-variant'} hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-variant/40">
-          <span class="material-symbols-outlined" data-icon="login">login</span>
+        <button id="top-auth-btn" title="${isAuthed ? 'Logout' : 'Login / Register'}" class="${isAuthed ? 'text-on-surface-variant hover:text-error' : (activeRoute === 'login' || activeRoute === 'register' ? 'text-primary' : 'text-on-surface-variant hover:text-primary')} transition-colors p-sm rounded-full hover:bg-surface-variant/40">
+          <span class="material-symbols-outlined" data-icon="${isAuthed ? 'logout' : 'login'}">${isAuthed ? 'logout' : 'login'}</span>
         </button>
         <button id="top-pause-btn" title="Toggle Quick Pause" class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-variant/40">
           <span class="material-symbols-outlined" data-icon="pause">pause</span>

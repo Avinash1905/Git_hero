@@ -48,15 +48,15 @@ class GitQuestApp {
   init() {
     // Handle URL hash changes
     window.addEventListener('hashchange', () => {
-      const hash = window.location.hash.replace('#', '') || 'hero';
+      const hash = window.location.hash.replace('#', '').replace(/^\//, '');
       this.navigate(hash);
     });
 
     // Global keyboard controls
     window.addEventListener('keydown', (e) => this.handleGlobalKeyDown(e));
 
-    // Initial route
-    const initialHash = window.location.hash.replace('#', '') || 'hero';
+    // Initial route (routes to login if unauthenticated, or dashboard if authenticated)
+    const initialHash = window.location.hash.replace('#', '').replace(/^\//, '');
     this.navigate(initialHash);
   }
 
@@ -70,10 +70,30 @@ class GitQuestApp {
       this.gameState.stopTimer();
     }
 
-    this.currentRoute = route;
-    window.location.hash = route;
+    // Clean and normalize target route
+    let targetRoute = (route || '').replace(/^#\/?/, '').replace(/^\//, '').trim();
 
-    if (route === 'gameplay') {
+    const isAuthed = StorageService.isAuthenticated();
+
+    // Authentication Route Guards:
+    // 1. Unauthenticated users cannot access protected game pages (only login & register are public)
+    if (!isAuthed) {
+      if (targetRoute !== 'login' && targetRoute !== 'register') {
+        targetRoute = 'login';
+      }
+    } else {
+      // 2. Authenticated users should not see login or register pages; redirect to ~/quest/main ('dashboard')
+      if (targetRoute === 'login' || targetRoute === 'register' || targetRoute === '' || targetRoute === 'main') {
+        targetRoute = 'dashboard';
+      }
+    }
+
+    this.currentRoute = targetRoute;
+    if (window.location.hash !== `#${targetRoute}`) {
+      window.location.hash = targetRoute;
+    }
+
+    if (targetRoute === 'gameplay') {
       const targetLvl = params.levelId || this.currentLevelId || '07';
       this.initGameplay(targetLvl, params.customLevel);
     } else {
@@ -342,11 +362,27 @@ class GitQuestApp {
     document.getElementById('nav-map-btn')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
     document.getElementById('nav-editor-btn')?.addEventListener('click', () => this.navigate('editor'));
-    document.getElementById('nav-auth-btn')?.addEventListener('click', () => this.navigate('login'));
+    document.getElementById('nav-auth-btn')?.addEventListener('click', () => {
+      if (StorageService.isAuthenticated()) {
+        StorageService.logout();
+        soundFX.playKey();
+        this.navigate('login');
+      } else {
+        this.navigate('login');
+      }
+    });
 
     document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
-    document.getElementById('top-auth-btn')?.addEventListener('click', () => this.navigate('login'));
+    document.getElementById('top-auth-btn')?.addEventListener('click', () => {
+      if (StorageService.isAuthenticated()) {
+        StorageService.logout();
+        soundFX.playKey();
+        this.navigate('login');
+      } else {
+        this.navigate('login');
+      }
+    });
     document.getElementById('top-pause-btn')?.addEventListener('click', () => soundFX.playKey());
     document.getElementById('top-menu-btn')?.addEventListener('click', () => this.navigate('dashboard'));
 
@@ -552,7 +588,8 @@ class GitQuestApp {
           return;
         }
 
-        // 4. Valid Credentials: Login Successful
+        // 4. Valid Credentials: Login Successful & Set Authenticated State
+        StorageService.setAuthenticated(true);
         soundFX.playSuccess();
         const submitBtn = document.getElementById('login-submit-btn');
         if (submitBtn) {
@@ -748,6 +785,7 @@ class GitQuestApp {
           registeredAt: new Date().toISOString()
         };
         StorageService.setRegisteredUser(userData);
+        StorageService.setAuthenticated(false); // Registration != Login: user is NOT authenticated
 
         if (statusBanner && statusText && statusIcon) {
           statusBanner.className = 'mb-5 p-3 rounded-lg border border-primary/50 bg-primary/10 text-primary text-xs font-terminal-code flex items-start gap-2 shadow-[0_0_15px_rgba(78,222,163,0.2)]';
