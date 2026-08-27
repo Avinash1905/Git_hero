@@ -457,17 +457,6 @@ class GitQuestApp {
       }
     });
 
-    // Login with Google button
-    document.getElementById('login-google-btn')?.addEventListener('click', () => {
-      soundFX.playKey();
-      if (statusBanner && statusText && statusIcon) {
-        statusBanner.className = 'mb-5 p-3 rounded-lg border border-secondary/50 bg-secondary/10 text-secondary text-xs font-terminal-code flex items-start gap-2 shadow-md';
-        statusIcon.textContent = 'info';
-        statusText.innerHTML = `<strong>Google Authentication:</strong> UI preview only. External OAuth provider not connected.`;
-        statusBanner.classList.remove('hidden');
-      }
-    });
-
     // Real-time input error clearing
     const clearError = (inputEl, errorEl) => {
       if (errorEl) errorEl.classList.add('hidden');
