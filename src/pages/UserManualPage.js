@@ -1,7 +1,4 @@
-/**
- * UserManualPage & NotFoundPage
- * Public reference guide and 404 terminal fallback screen.
- */
+import { renderCommandGuideHtml } from '../features/manual/GitHeroCommandGuide.js';
 
 export function renderUserManualPage() {
   return `
@@ -67,6 +64,9 @@ export function renderUserManualPage() {
             <div><span class="text-tertiary font-bold">git status</span> - Inspects branch name, box staging status, and required commits</div>
           </div>
         </div>
+
+        <!-- Comprehensive Command Guide (PR #3) -->
+        ${renderCommandGuideHtml()}
       </div>
     </main>
   `;
