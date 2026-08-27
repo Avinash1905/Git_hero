@@ -55,7 +55,7 @@ export function renderGitSandboxPage() {
           </div>
 
           <div id="sandbox-log-output" class="h-48 overflow-y-auto scrollbar-thin text-xs space-y-1.5 p-2 bg-surface-container-lowest/80 rounded-lg border border-outline-variant/20">
-            <div class="text-primary font-bold">GitQuest Visual Sandbox Ready.</div>
+            <div class="text-primary font-bold">GitHero Visual Sandbox Ready.</div>
             <div class="text-on-surface-variant">Try typing: <code>git commit -m "my commit"</code> or <code>git branch feature</code></div>
           </div>
 

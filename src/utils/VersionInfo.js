@@ -4,7 +4,7 @@
  */
 
 export const APP_VERSION_INFO = Object.freeze({
-  name: 'GitQuest',
+  name: 'GitHero',
   version: '2.5.0-tactical',
   build: 'production-enterprise',
   releaseDate: '2026-08-27',
@@ -22,7 +22,7 @@ export const APP_VERSION_INFO = Object.freeze({
     'Cryptographic GPG Keyring and Conventional Commits Scanner'
   ],
   authors: [
-    'GitQuest Core Architectural Team',
+    'GitHero Core Architectural Team',
     'Google DeepMind Pair Programming Operative'
   ]
 });

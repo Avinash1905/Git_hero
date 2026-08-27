@@ -93,7 +93,7 @@ export function renderSidebarNav({ activeRoute = 'dashboard' }) {
       <div class="space-y-1">
         <div class="px-4 py-3 mb-4 flex items-center gap-2">
           <span class="material-symbols-outlined text-primary text-2xl">terminal</span>
-          <span class="font-headline-sm font-bold text-on-surface tracking-wider">GITQUEST</span>
+          <span class="font-headline-sm font-bold text-on-surface tracking-wider">GITHERO</span>
         </div>
         ${linksHtml}
       </div>

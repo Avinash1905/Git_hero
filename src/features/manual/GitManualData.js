@@ -12,7 +12,7 @@ export const GIT_MANUAL_SECTIONS = [
         name: 'git status',
         syntax: 'git status',
         summary: 'Displays the state of the working directory and the staging area.',
-        description: 'Lets you see which changes have been staged, which haven\'t, and which files aren\'t being tracked by Git. In GitQuest, this inspects your immediate grid quadrant and shows payload destination goals.',
+        description: 'Lets you see which changes have been staged, which haven\'t, and which files aren\'t being tracked by Git. In GitHero, this inspects your immediate grid quadrant and shows payload destination goals.',
         example: 'git status',
         flags: ['-s / --short (Give the output in short format)', '-b / --branch (Show branch and tracking info)'],
         category: 'Inspection'
@@ -21,7 +21,7 @@ export const GIT_MANUAL_SECTIONS = [
         name: 'git push',
         syntax: 'git push [remote] [branch]',
         summary: 'Updates remote refs along with associated objects.',
-        description: 'Transmits local commit payloads upstream to the origin server. In GitQuest, pushing propels the payload box forward in your current facing direction towards the goal.',
+        description: 'Transmits local commit payloads upstream to the origin server. In GitHero, pushing propels the payload box forward in your current facing direction towards the goal.',
         example: 'git push origin main',
         flags: ['-u / --set-upstream (Add upstream tracking)', '-f / --force (Force update - hazardous)'],
         category: 'Sync'
@@ -30,7 +30,7 @@ export const GIT_MANUAL_SECTIONS = [
         name: 'git pull',
         syntax: 'git pull [remote] [branch]',
         summary: 'Fetch from and integrate with another repository or a local branch.',
-        description: 'Incorporates changes from a remote repository into the current branch. In GitQuest, directional pulls (git pull left/right/up/down) extract trapped payloads backward out of tight corridors.',
+        description: 'Incorporates changes from a remote repository into the current branch. In GitHero, directional pulls (git pull left/right/up/down) extract trapped payloads backward out of tight corridors.',
         example: 'git pull origin main',
         flags: ['--rebase (Rebase current branch on top of upstream)', '--no-commit (Do not auto-commit merge)'],
         category: 'Sync'
@@ -39,7 +39,7 @@ export const GIT_MANUAL_SECTIONS = [
         name: 'git commit',
         syntax: 'git commit -m "<message>"',
         summary: 'Record changes to the repository.',
-        description: 'Creates a new commit containing the current contents of the index and the given log message describing the changes. In GitQuest, this finalizes goal alignment to complete the level.',
+        description: 'Creates a new commit containing the current contents of the index and the given log message describing the changes. In GitHero, this finalizes goal alignment to complete the level.',
         example: 'git commit -m "feat: complete staging corridor"',
         flags: ['-m "<msg>" (Set commit message)', '-a / --all (Automatically stage modified files)', '--amend (Amend previous commit)'],
         category: 'History'
@@ -55,7 +55,7 @@ export const GIT_MANUAL_SECTIONS = [
         name: 'git switch',
         syntax: 'git switch <branch-name>',
         summary: 'Switch between working branches.',
-        description: 'Switches context to a specified branch, updating the working tree and HEAD pointer. In GitQuest, switching branches opens alternate gate pathways.',
+        description: 'Switches context to a specified branch, updating the working tree and HEAD pointer. In GitHero, switching branches opens alternate gate pathways.',
         example: 'git switch feature-stage-2',
         flags: ['-c / --create (Create and switch to new branch)', '-d / --detach (Switch to detached HEAD state)'],
         category: 'Branching'

@@ -1,7 +1,7 @@
 {
   "name": "git_hero",
   "version": "1.0.0",
-  "description": "",
+  "description": "GitHero - Master Git by Changing the World",
   "main": "index.js",
   "type": "module",
   "scripts": {

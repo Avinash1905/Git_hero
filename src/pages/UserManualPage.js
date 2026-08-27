@@ -12,7 +12,7 @@ export function renderUserManualPage() {
           <span>Knowledge Base</span>
         </div>
         <h1 class="text-headline-md font-headline-md text-on-surface font-bold">
-          GitQuest Tactical Manual
+          GitHero Tactical Manual
         </h1>
         <p class="text-on-surface-variant text-sm font-terminal-code">
           Reference guide covering git plumbing, navigation mechanics, and CLI operations

@@ -10,7 +10,7 @@ export function renderTopAppBar(activeRoute = 'main', onNavigate, onOpenSettings
     <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-hud-margin h-16 bg-surface/80 backdrop-blur-xl bg-surface-container-high/80 border-b border-outline-variant/30 shadow-md">
       <div class="flex items-center gap-md">
         <button id="brand-logo-btn" class="text-headline-sm font-headline-sm font-bold text-primary tracking-tighter hover:opacity-90 transition-opacity flex items-center gap-2">
-          GitQuest
+          GitHero
         </button>
       </div>
       

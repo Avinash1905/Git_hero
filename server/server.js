@@ -103,8 +103,8 @@ app.use((err, req, res, next) => {
 // Start Server if executed directly
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`[GitQuest Production Server] Listening on http://localhost:${PORT}`);
-    console.log(`[GitQuest API Endpoints] Available at http://localhost:${PORT}/api`);
+    console.log(`[GitHero Production Server] Listening on http://localhost:${PORT}`);
+    console.log(`[GitHero API Endpoints] Available at http://localhost:${PORT}/api`);
   });
 }
 
