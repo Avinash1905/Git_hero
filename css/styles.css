@@ -1,4 +1,4 @@
-/* GitQuest Authoritative Design System Styles */
+/* GitHero Authoritative Design System Styles */
 
 :root {
   --color-surface: #081425;
@@ -42,29 +42,29 @@
 
 /* Glassmorphism panel styling matching Stitch */
 .glass-panel {
-  background-color: rgba(21, 32, 49, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid #334155;
+  background-color: rgba(21, 32, 49, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(134, 148, 138, 0.25);
 }
 
 .hud-panel {
-  background-color: #1e293b;
+  background-color: #152031;
   border: 1px solid #334155;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .settings-panel {
-  background-color: rgba(21, 32, 49, 0.85);
+  background-color: rgba(21, 32, 49, 0.88);
   border: 1px solid #3c4a42;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(16px);
 }
 
 /* Background grid patterns */
 .bg-grid-pattern {
-  background-image: linear-gradient(to right, rgba(134, 148, 138, 0.1) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(134, 148, 138, 0.1) 1px, transparent 1px);
+  background-image: linear-gradient(to right, rgba(134, 148, 138, 0.08) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(134, 148, 138, 0.08) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -75,7 +75,7 @@
 }
 
 .hero-gradient {
-  background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.15) 0%, rgba(8, 20, 37, 1) 70%);
+  background: radial-gradient(circle at 50% 40%, rgba(16, 185, 129, 0.14) 0%, rgba(8, 20, 37, 1) 75%);
 }
 
 /* Glow effects */
@@ -99,126 +99,135 @@
   text-shadow: 0 0 8px rgba(78, 222, 163, 0.6);
 }
 
-.success-glow {
-  box-shadow: 0 0 40px rgba(78, 222, 163, 0.2);
-}
-
-.pulse-glow {
-  animation: pulseGlowAnim 2s infinite ease-in-out;
-}
-
-@keyframes pulseGlowAnim {
-  0%, 100% { box-shadow: 0 0 10px rgba(78, 222, 163, 0.3); }
-  50% { box-shadow: 0 0 22px rgba(78, 222, 163, 0.7); }
-}
-
-.pulse-node {
-  animation: pulseNodeAnim 2s infinite ease-in-out;
-}
-
-@keyframes pulseNodeAnim {
-  0%, 100% { box-shadow: 0 0 15px rgba(78, 222, 163, 0.4); transform: scale(1); }
-  50% { box-shadow: 0 0 30px rgba(78, 222, 163, 0.8); transform: scale(1.05); }
-}
-
-.star-pulse {
-  animation: starPulseAnim 2s infinite alternate;
-}
-
-@keyframes starPulseAnim {
-  0% { filter: drop-shadow(0 0 5px rgba(255, 185, 95, 0.4)); transform: scale(1); }
-  100% { filter: drop-shadow(0 0 16px rgba(255, 185, 95, 0.85)); transform: scale(1.12); }
-}
-
-/* Shimmer animations */
-.btn-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-shimmer::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0) 100%);
-  transform: rotate(30deg) translateX(-100%);
-  animation: shimmer 3s infinite linear;
-}
-
-@keyframes shimmer {
-  0% { transform: rotate(30deg) translateX(-100%); }
-  100% { transform: rotate(30deg) translateX(100%); }
-}
-
-/* Terminal Cursor */
-@keyframes terminalBlink {
+/* Terminal Cursor Blink */
+@keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
 
 .cursor-blink {
-  animation: terminalBlink 1s step-end infinite;
+  animation: blink 1s infinite;
 }
 
-.terminal-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  background-color: #4edea3;
-  animation: terminalBlink 1s step-end infinite;
-  vertical-align: text-bottom;
-  margin-left: 4px;
+/* Star victory pulse animation */
+@keyframes starPulse {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-/* Grid Tile Styling */
-.grid-tile {
-  border-top: 2px solid rgba(255, 255, 255, 0.08);
-  position: relative;
-  transition: all 0.15s ease-out;
+.star-pulse {
+  animation: starPulse 0.5s ease-out forwards;
 }
 
-/* Particle system animation */
-.particle {
-  position: absolute;
+/* Pulse animation for active nodes */
+@keyframes pulseNode {
+  0% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.6); }
+  70% { box-shadow: 0 0 0 14px rgba(78, 222, 163, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0); }
+}
+
+.pulse-node {
+  animation: pulseNode 2s infinite;
+}
+
+/* Screen Shake Classes */
+@keyframes shakeSm {
+  0%, 100% { transform: translate(0, 0); }
+  20%, 60% { transform: translate(-2px, 1px); }
+  40%, 80% { transform: translate(2px, -1px); }
+}
+
+@keyframes shakeMd {
+  0%, 100% { transform: translate(0, 0); }
+  20%, 60% { transform: translate(-4px, 2px); }
+  40%, 80% { transform: translate(4px, -2px); }
+}
+
+@keyframes shakeLg {
+  0%, 100% { transform: translate(0, 0); }
+  20%, 60% { transform: translate(-7px, 4px); }
+  40%, 80% { transform: translate(7px, -4px); }
+}
+
+.shake-sm { animation: shakeSm 0.25s ease-in-out; }
+.shake-md { animation: shakeMd 0.3s ease-in-out; }
+.shake-lg { animation: shakeLg 0.35s ease-in-out; }
+
+/* CRT Scanline Filter Mode */
+.crt-screen-active::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  z-index: 999;
+  background-size: 100% 3px, 3px 100%;
   pointer-events: none;
-  animation: floatUp linear forwards;
-  opacity: 0.7;
-  font-family: 'JetBrains Mono', monospace;
+  opacity: 0.6;
 }
 
-@keyframes floatUp {
-  0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
-  100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+/* High Contrast Mode */
+.high-contrast-mode {
+  --color-surface: #000000;
+  --color-background: #000000;
+  --color-on-surface: #ffffff;
+  --color-primary: #00ff88;
+  --color-secondary: #88c0ff;
+  --color-outline: #ffffff;
+  --color-outline-variant: #aaaaaa;
 }
 
-/* Map dashed line pulse */
-.map-line {
-  stroke-dasharray: 6;
-  animation: dash 30s linear infinite;
+/* Large Font Mode */
+.large-font-mode {
+  font-size: 115%;
 }
 
-@keyframes dash {
-  to { stroke-dashoffset: -1000; }
+.large-font-mode .font-terminal-code,
+.large-font-mode .text-terminal-code {
+  font-size: 18px !important;
 }
 
-/* Custom scrollbars */
+/* Reduced Motion Mode */
+.reduce-motion * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #081425;
+  background: rgba(8, 20, 37, 0.6);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f2a3c;
-  border-radius: 3px;
+  background: rgba(134, 148, 138, 0.4);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4edea3;
+  background: rgba(78, 222, 163, 0.6);
+}
+
+/* Fixed Terminal History Scroll Area */
+.terminal-history-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(78, 222, 163, 0.3) rgba(8, 20, 37, 0.6);
+}
+
+/* 3D Perspective Utils */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
 }

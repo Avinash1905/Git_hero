@@ -1,8 +1,12 @@
-// StorageService: local state persistence for player profile, levels, settings, and progress
+/**
+ * StorageService: local state persistence for player profile, levels, settings, and progress.
+ * Supports backward-compatible migration from legacy keys.
+ */
 
-const STORAGE_KEY = 'gitquest_user_state_v2';
+const STORAGE_KEY = 'githero_user_state_v2';
+const LEGACY_STORAGE_KEY = 'gitquest_user_state_v2';
 
-const DEFAULT_STATE = {
+export const DEFAULT_STATE = {
   player: {
     username: '@cyber_ninja',
     title: 'Grandmaster',
@@ -12,6 +16,8 @@ const DEFAULT_STATE = {
     completedLevelsCount: 128,
     perfectClears: 84,
     bugsSquashed: 404,
+    streakDays: 5,
+    lastActiveDate: new Date().toISOString(),
     commandUsage: {
       'git commit': 85,
       'git push': 65,
@@ -30,16 +36,7 @@ const DEFAULT_STATE = {
       '04': { completed: true, stars: 3, time: '01:50', moves: 9, score: 9750 },
       '05': { completed: true, stars: 2, time: '02:30', moves: 14, score: 8900 },
       '06': { completed: true, stars: 3, time: '02:15', moves: 12, score: 9400 },
-      '07': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '08': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '09': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '10': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '11': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '12': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '13': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '14': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '15': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 },
-      '16': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 }
+      '07': { completed: false, stars: 0, time: '--:--', moves: 0, score: 0 }
     }
   },
   settings: {
@@ -55,79 +52,53 @@ const DEFAULT_STATE = {
     vimKeybindings: false
   },
   achievements: [
-    { id: 'first_commit', title: 'FIRST COMMIT', desc: 'Complete your first level.', icon: 'emoji_events', xp: 100, unlocked: true, date: '01/05/2024' },
-    { id: 'push_master', title: 'PUSH MASTER', desc: 'Complete a level using only push commands.', icon: 'upload', xp: 250, unlocked: true, date: '12/05/2024' },
-    { id: 'status_check', title: 'STATUS CHECK', desc: 'Use git status 100 times.', icon: 'find_in_page', xp: 150, unlocked: true, date: '15/05/2024' },
-    { id: 'merge_survivor', title: 'MERGE CONFLICT SURVIVOR', desc: 'Resolve 10 merge conflicts without reverting.', icon: 'call_merge', xp: 500, unlocked: false, progress: 3, maxProgress: 10 },
-    { id: 'branch_weaver', title: 'BRANCH WEAVER', desc: 'Create 5 distinct branches in a single challenge.', icon: 'alt_route', xp: 300, unlocked: false, progress: 2, maxProgress: 5 },
-    { id: 'speed_demon', title: 'SPEED DEMON', desc: 'Complete Level 07 under 90 seconds.', icon: 'speed', xp: 400, unlocked: false, progress: 0, maxProgress: 1 },
-    { id: 'grandmaster', title: 'GIT GRANDMASTER', desc: 'Reach 20,000 XP and clear all 5 Worlds.', icon: 'military_tech', xp: 1000, unlocked: false, progress: 14500, maxProgress: 20000 }
+    { id: 'first_commit', title: 'FIRST COMMIT', desc: 'Complete your first level.', category: 'general', icon: 'emoji_events', xp: 100, unlocked: true, date: '01/05/2024' },
+    { id: 'push_master', title: 'PUSH MASTER', desc: 'Complete a level using only push commands.', category: 'commands', icon: 'upload', xp: 250, unlocked: true, date: '12/05/2024' },
+    { id: 'status_check', title: 'STATUS CHECK', desc: 'Use git status 100 times.', category: 'commands', icon: 'find_in_page', xp: 150, unlocked: true, date: '15/05/2024' },
+    { id: 'merge_survivor', title: 'MERGE CONFLICT SURVIVOR', desc: 'Resolve 10 merge conflicts without reverting.', category: 'puzzles', icon: 'call_merge', xp: 500, unlocked: false, progress: 3, maxProgress: 10 },
+    { id: 'branch_weaver', title: 'BRANCH WEAVER', desc: 'Create 5 distinct branches in a single challenge.', category: 'puzzles', icon: 'alt_route', xp: 300, unlocked: false, progress: 2, maxProgress: 5 },
+    { id: 'speed_demon', title: 'SPEED DEMON', desc: 'Complete Level 07 under 90 seconds.', category: 'masteries', icon: 'speed', xp: 400, unlocked: false, progress: 0, maxProgress: 1 },
+    { id: 'grandmaster', title: 'GIT GRANDMASTER', desc: 'Reach 20,000 XP and clear all 6 Worlds.', category: 'masteries', icon: 'military_tech', xp: 1000, unlocked: false, progress: 14500, maxProgress: 20000 }
   ]
 };
 
 export class StorageService {
   static load() {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      if (data) {
-        return JSON.parse(data);
+      if (typeof localStorage !== 'undefined') {
+        const data = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (data) {
+          return JSON.parse(data);
+        }
       }
     } catch (e) {
       console.warn('StorageService load failed, using defaults', e);
     }
-    return DEFAULT_STATE;
+    return JSON.parse(JSON.stringify(DEFAULT_STATE));
   }
 
   static save(state) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
     } catch (e) {
       console.warn('StorageService save failed', e);
     }
   }
 
-  static completeLevel(levelId, stats) {
-    const state = this.load();
-    const existing = state.progress.levels[levelId] || {};
-    
-    // Update level
-    state.progress.levels[levelId] = {
-      completed: true,
-      stars: Math.max(existing.stars || 0, stats.stars || 1),
-      time: stats.time,
-      moves: stats.moves,
-      score: Math.max(existing.score || 0, stats.score || 8000)
-    };
-
-    // Add XP
-    state.player.xp += stats.xpAwarded || 500;
-    state.player.completedLevelsCount = Object.values(state.progress.levels).filter(l => l.completed).length;
-
-    // Check next level unlock
-    const numId = parseInt(levelId, 10);
-    const nextId = String(numId + 1).padStart(2, '0');
-    if (state.progress.levels[nextId] !== undefined) {
-      state.progress.currentLevelId = nextId;
-    }
-
-    // Save
-    this.save(state);
-    return state;
-  }
-
   static updateCommandUsage(cmdName) {
     const state = this.load();
-    if (!state.player.commandUsage[cmdName]) {
-      state.player.commandUsage[cmdName] = 0;
+    if (!state.player.commandUsage) {
+      state.player.commandUsage = {};
     }
-    state.player.commandUsage[cmdName]++;
+    state.player.commandUsage[cmdName] = (state.player.commandUsage[cmdName] || 0) + 1;
     this.save(state);
   }
 
-  static updateSettings(settings) {
-    const state = this.load();
-    state.settings = { ...state.settings, ...settings };
-    this.save(state);
-    return state.settings;
+  static reset() {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    return JSON.parse(JSON.stringify(DEFAULT_STATE));
   }
 }

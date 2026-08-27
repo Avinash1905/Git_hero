@@ -1,19 +1,30 @@
-// GitQuest SPA Main Application Controller
+/**
+ * GitHero SPA Master Application Controller
+ * Manages reactive routing, active session state, keyboard bindings, and modal lifecycles.
+ */
 
 import { soundFX } from './audio.js';
 import { StorageService } from './services/StorageService.js';
+import { appStore } from './state/appStore.js';
+import { eventBus, EVENTS } from './state/eventBus.js';
 import { LEVELS } from './engine/Levels.js';
 import { GameState } from './engine/GameState.js';
 import { GridEngine } from './engine/GridEngine.js';
 import { GitCLI } from './terminal/GitCLI.js';
+import { TerminalHistory } from './terminal/TerminalHistory.js';
+import { AutocompleteEngine } from './terminal/AutocompleteEngine.js';
+import { authService } from './services/authService.js';
+import { notificationService } from './services/notificationService.js';
 
 // Components
 import { renderTopAppBar } from './components/TopAppBar.js';
 import { renderBottomNavBar } from './components/BottomNavBar.js';
 import { renderLevelCompleteModal, initParticleSystem } from './components/LevelCompleteModal.js';
+import { renderHintDialog } from './components/HintDialog.js';
 
 // Views
 import { renderHeroView } from './views/HeroView.js';
+import { renderAuthView } from './views/AuthView.js';
 import { renderDashboardView } from './views/DashboardView.js';
 import { renderWorldMapView } from './views/WorldMapView.js';
 import { renderLevelSelectionView } from './views/LevelSelectionView.js';
@@ -23,498 +34,489 @@ import { renderLeaderboardView } from './views/LeaderboardView.js';
 import { renderAchievementsView } from './views/AchievementsView.js';
 import { renderDailyChallengeView } from './views/DailyChallengeView.js';
 import { renderSettingsView } from './views/SettingsView.js';
+import { renderUserManualView } from './views/UserManualView.js';
 import { renderLevelEditorView, LevelEditorController } from './views/LevelEditorView.js';
 
-class GitQuestApp {
+class GitHeroApp {
   constructor() {
     this.currentRoute = 'hero';
-    this.currentLevelId = '07';
+    this.currentLevelId = '01';
+    this.selectedWorldFilter = null;
+    this.activeSettingsCategory = 'general';
+    this.activeLeaderboardTab = 'global';
+    this.activeAchievementsCategory = 'all';
+
     this.gameState = null;
     this.gridEngine = null;
     this.gitCli = null;
+    this.terminalHistory = new TerminalHistory();
+    this.autocompleteEngine = new AutocompleteEngine();
     this.editor = new LevelEditorController();
-    this.leaderboardTab = 'global';
-    this.settingsCategory = 'general';
-    this.particleInterval = null;
-
-    // Load initial settings
-    const saved = StorageService.load();
-    soundFX.setMuted(!saved.settings.soundEffects);
-    soundFX.setVolume(saved.settings.volume / 100);
+    this.customLevelDef = null;
   }
 
   init() {
-    // Handle URL hash changes
-    window.addEventListener('hashchange', () => {
-      const hash = window.location.hash.replace('#', '') || 'hero';
-      this.navigate(hash);
-    });
+    appStore.init();
+    soundFX.init();
 
-    // Global keyboard controls
+    // Global Key Listener
     window.addEventListener('keydown', (e) => this.handleGlobalKeyDown(e));
 
-    // Initial route
-    const initialHash = window.location.hash.replace('#', '') || 'hero';
-    this.navigate(initialHash);
+    // Handle initial route
+    this.navigate('hero');
   }
 
   navigate(route, params = {}) {
-    if (this.particleInterval) {
-      clearInterval(this.particleInterval);
-      this.particleInterval = null;
+    this.currentRoute = route;
+
+    if (route === 'gameplay') {
+      if (params.levelId) this.currentLevelId = String(params.levelId).padStart(2, '0');
+      this.customLevelDef = params.customLevel || null;
+      this.initGameplaySession(this.currentLevelId, this.customLevelDef);
+    } else {
+      if (this.gameState) {
+        this.gameState.stopTimer();
+      }
     }
 
-    if (this.gameState && route !== 'gameplay') {
+    if (params.worldFilter) this.selectedWorldFilter = params.worldFilter;
+    if (params.settingsCategory) this.activeSettingsCategory = params.settingsCategory;
+    if (params.leaderboardTab) this.activeLeaderboardTab = params.leaderboardTab;
+    if (params.achievementsCategory) this.activeAchievementsCategory = params.achievementsCategory;
+
+    this.render();
+    window.scrollTo(0, 0);
+  }
+
+  initGameplaySession(levelId, customLevel = null) {
+    const formattedId = String(levelId).padStart(2, '0');
+    this.gameState = new GameState(formattedId, customLevel);
+    this.gridEngine = new GridEngine(this.gameState);
+    
+    this.gitCli = new GitCLI(
+      this.gameState,
+      this.gridEngine,
+      () => this.handleLevelComplete(),
+      () => this.updateGameplayUI(),
+      (newLevelId) => this.navigate('gameplay', { levelId: newLevelId })
+    );
+
+    this.gameState.startTimer((formattedTime) => {
+      const timerEl = document.getElementById('game-timer-display');
+      if (timerEl) timerEl.textContent = formattedTime;
+    });
+  }
+
+  handleLevelComplete() {
+    if (this.gameState) {
       this.gameState.stopTimer();
     }
 
-    this.currentRoute = route;
-    window.location.hash = route;
+    const elapsed = this.gameState.elapsedSeconds;
+    const moves = this.gameState.moves;
+    const levelDef = this.gameState.levelDef;
 
-    if (route === 'gameplay') {
-      const targetLvl = params.levelId || this.currentLevelId || '07';
-      this.initGameplay(targetLvl, params.customLevel);
-    } else {
-      this.render();
-    }
-  }
+    // Calculate stars: 3 stars for par moves and time
+    let stars = 3;
+    if (moves > (levelDef.commitsReq || 10) * 1.5 || elapsed > 180) stars = 1;
+    else if (moves > (levelDef.commitsReq || 10) || elapsed > 120) stars = 2;
 
-  initGameplay(levelId, customLevel = null) {
-    this.currentLevelId = levelId;
-    this.gameState = new GameState(levelId);
-    
-    if (customLevel) {
-      this.gameState.levelDef = customLevel;
-      this.gameState.player = { ...customLevel.player, dir: 'up' };
-      this.gameState.box = { ...customLevel.box };
-      this.gameState.goal = { ...customLevel.goal };
-      this.gameState.walls = [...customLevel.walls];
-      this.gameState.hazards = [...(customLevel.hazards || [])];
-      this.gameState.gridSize = customLevel.gridSize || 10;
-    }
-
-    this.gridEngine = new GridEngine(this.gameState, () => {
-      this.updateGameplayGrid();
-    });
-
-    this.gitCli = new GitCLI(this.gameState, this.gridEngine, {
-      onCommitSuccess: (state) => this.handleLevelComplete(state),
-      onSwitchLevel: (lvlId) => this.navigate('gameplay', { levelId: lvlId }),
-      onLogUpdate: () => this.updateTerminalOutput()
-    });
-
-    this.gameState.startTimer((formatted) => {
-      const timerEl = document.getElementById('game-live-timer');
-      if (timerEl) timerEl.textContent = formatted;
-    });
-
-    this.render();
-  }
-
-  handleLevelComplete(state) {
-    this.gameState.stopTimer();
     const stats = {
-      time: state.getFormattedTime(),
-      commands: state.commandsCount,
-      pushCount: state.pushCount,
-      pullCount: state.pullCount,
-      statusCount: state.statusCount,
-      moves: state.moves,
-      score: state.calculateScore(),
-      stars: state.moves <= (state.levelDef.commitsReq * 4) ? 3 : (state.moves <= (state.levelDef.commitsReq * 8) ? 2 : 1),
-      xpAwarded: state.levelDef.xpReward || 500
+      levelId: this.gameState.levelId,
+      stars,
+      time: this.gameState.getFormattedTime(),
+      moves,
+      commands: this.gameState.commandsCount,
+      xpAwarded: levelDef.xpReward || (stars * 150),
+      score: Math.max(1000, 10000 - (moves * 50) - (elapsed * 10))
     };
 
-    // Save to storage
-    StorageService.completeLevel(state.levelId, stats);
+    appStore.completeLevel(this.gameState.levelId, stats);
 
-    // Show victory modal
-    const appContainer = document.getElementById('app-root');
-    const modalHtml = renderLevelCompleteModal(stats);
-    
-    const existingModal = document.getElementById('level-complete-overlay');
-    if (existingModal) existingModal.remove();
+    // Render modal
+    const overlayHtml = renderLevelCompleteModal(
+      stats,
+      () => {
+        const nextId = String(parseInt(this.gameState.levelId, 10) + 1).padStart(2, '0');
+        if (LEVELS[nextId]) {
+          this.navigate('gameplay', { levelId: nextId });
+        } else {
+          this.navigate('levels');
+        }
+      },
+      () => this.navigate('gameplay', { levelId: this.gameState.levelId }),
+      () => this.navigate('world-map')
+    );
 
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = modalHtml;
-    appContainer.appendChild(tempDiv.firstElementChild);
+    const container = document.createElement('div');
+    container.innerHTML = overlayHtml;
+    document.body.appendChild(container.firstElementChild);
+    initParticleSystem();
 
-    this.particleInterval = initParticleSystem();
-
-    // Bind modal buttons
     document.getElementById('modal-next-btn')?.addEventListener('click', () => {
-      const nextId = String(parseInt(state.levelId, 10) + 1).padStart(2, '0');
-      if (LEVELS[nextId]) {
-        this.navigate('gameplay', { levelId: nextId });
-      } else {
-        this.navigate('world-map');
-      }
+      document.getElementById('level-complete-overlay')?.remove();
+      const nextId = String(parseInt(this.gameState.levelId, 10) + 1).padStart(2, '0');
+      if (LEVELS[nextId]) this.navigate('gameplay', { levelId: nextId });
+      else this.navigate('levels');
     });
 
     document.getElementById('modal-replay-btn')?.addEventListener('click', () => {
-      this.navigate('gameplay', { levelId: state.levelId });
+      document.getElementById('level-complete-overlay')?.remove();
+      this.navigate('gameplay', { levelId: this.gameState.levelId });
     });
 
     document.getElementById('modal-map-btn')?.addEventListener('click', () => {
+      document.getElementById('level-complete-overlay')?.remove();
       this.navigate('world-map');
     });
   }
 
-  handleGlobalKeyDown(e) {
-    // If active input has focus in terminal or inputs, don't hijack WASD unless it's gameplay
-    const isInputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT');
-
-    if (this.currentRoute === 'gameplay' && this.gridEngine) {
-      if (isInputFocused && document.activeElement.id === 'terminal-cmd-input') {
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          document.activeElement.value = this.gitCli.getPreviousHistory();
-          return;
-        }
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          document.activeElement.value = this.gitCli.getNextHistory();
-          return;
-        }
-        return;
-      }
-
-      // Movement keys
-      let handled = false;
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
-        this.gridEngine.movePlayer(0, -1);
-        handled = true;
-      } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
-        this.gridEngine.movePlayer(0, 1);
-        handled = true;
-      } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        this.gridEngine.movePlayer(-1, 0);
-        handled = true;
-      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        this.gridEngine.movePlayer(1, 0);
-        handled = true;
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        this.gridEngine.undo();
-        handled = true;
-      }
-
-      if (handled) {
-        e.preventDefault();
-      }
-    }
-  }
-
-  updateGameplayGrid() {
-    if (this.currentRoute !== 'gameplay' || !this.gameState) return;
-    const gridEl = document.getElementById('game-puzzle-grid');
-    if (gridEl) {
+  updateGameplayUI() {
+    const gridEl = document.getElementById('gameplay-grid');
+    if (gridEl && this.gameState) {
       gridEl.innerHTML = generateGridTilesHtml(this.gameState);
-    } else {
-      const viewContainer = document.getElementById('view-content-area');
-      if (viewContainer) {
-        viewContainer.innerHTML = renderGameplayView(this.gameState, this.gitCli);
-        this.bindGameplayEvents();
-      }
+    }
+
+    const movesEl = document.getElementById('game-moves-display');
+    if (movesEl && this.gameState) {
+      movesEl.textContent = this.gameState.moves;
+    }
+
+    const logsContainer = document.getElementById('terminal-logs-container');
+    if (logsContainer && this.gitCli) {
+      logsContainer.innerHTML = this.gitCli.logs.map(log => {
+        if (log.type === 'cmd') {
+          return `
+            <div class="text-sm font-terminal-code flex items-start gap-2 py-0.5">
+              <span class="text-primary font-bold select-none">&gt;</span>
+              <span class="text-on-surface font-semibold">${log.text}</span>
+            </div>
+          `;
+        } else if (log.type === 'status') {
+          return `
+            <div class="p-3 my-1.5 bg-surface-container/90 rounded border border-outline-variant/40 text-xs font-terminal-code space-y-1">
+              <div class="text-on-surface-variant flex justify-between">
+                <span>On branch: <strong class="text-primary">${log.branch}</strong></span>
+                <span class="text-tertiary">${log.progress}</span>
+              </div>
+              <div class="text-on-surface">Mission: ${log.objective}</div>
+              <div class="${this.gameState.checkGoal() ? 'text-primary font-bold' : 'text-on-surface-variant'}">Payload status: ${log.boxStatus}</div>
+            </div>
+          `;
+        } else if (log.type === 'push' || log.type === 'pull' || log.type === 'commit' || log.type === 'switch') {
+          return `
+            <div class="text-xs font-terminal-code py-1 text-on-surface-variant space-y-0.5 border-l-2 border-primary/50 pl-2 my-1">
+              <div class="text-secondary">${log.detail}</div>
+              <div class="text-primary">${log.result || ''}</div>
+            </div>
+          `;
+        } else if (log.type === 'error') {
+          return `
+            <div class="text-xs font-terminal-code text-error py-1 flex items-start gap-1.5">
+              <span class="material-symbols-outlined text-sm">error</span>
+              <span>${log.text}</span>
+            </div>
+          `;
+        }
+        return `
+          <div class="text-xs font-terminal-code text-on-surface-variant/90 whitespace-pre-wrap py-0.5">
+            ${log.text}
+          </div>
+        `;
+      }).join('');
+      logsContainer.scrollTop = logsContainer.scrollHeight;
     }
   }
 
-  updateTerminalOutput() {
-    const terminalBody = document.getElementById('terminal-output-body');
-    if (!terminalBody || !this.gitCli) return;
+  handleGlobalKeyDown(e) {
+    if (this.currentRoute !== 'gameplay' || !this.gitCli) return;
 
-    terminalBody.innerHTML = this.gitCli.logs.map(log => {
-      if (log.type === 'cmd') {
-        return `<div class="flex items-center gap-2"><span class="text-primary font-bold">$</span><span class="text-on-surface">${log.text}</span></div>`;
-      }
-      if (log.type === 'status') {
-        return `
-          <div class="text-on-surface-variant pl-4 border-l-2 border-surface-variant my-1 space-y-0.5">
-            <div class="text-xs">On ${log.branch}</div>
-            <div class="text-on-surface text-sm">Objective: ${log.objective}</div>
-            <div class="${log.boxStatus.includes('READY') ? 'text-primary font-bold' : 'text-tertiary'} text-xs">Box: ${log.boxStatus}</div>
-            <div class="text-secondary text-xs">Progress: ${log.progress}</div>
-          </div>
-        `;
-      }
-      if (log.type === 'push' || log.type === 'pull') {
-        return `
-          <div class="text-on-surface-variant pl-4 my-1 space-y-0.5">
-            <div class="text-on-surface-variant text-xs">${log.detail}</div>
-            <div class="text-primary text-sm">${log.result}</div>
-          </div>
-        `;
-      }
-      if (log.type === 'commit_success') {
-        return `
-          <div class="text-primary pl-4 border-l-2 border-primary my-1 space-y-0.5">
-            <div class="font-bold">[${log.branch} ${log.commitHash}] ${log.message}</div>
-            <div class="text-xs text-on-surface-variant">${log.filesChanged}</div>
-          </div>
-        `;
-      }
-      if (log.type === 'error') {
-        return `<div class="text-error pl-4 text-xs font-terminal-code my-1">${log.text.replace(/\n/g, '<br/>')}</div>`;
-      }
-      return `<div class="text-on-surface-variant text-xs pl-4 font-terminal-code my-1">${(log.text || '').replace(/\n/g, '<br/>')}</div>`;
-    }).join('');
+    const termInput = document.getElementById('terminal-input');
+    const isInputFocused = document.activeElement === termInput;
 
-    terminalBody.scrollTop = terminalBody.scrollHeight;
+    // Terminal History Navigation (Arrow Up / Down)
+    if (isInputFocused) {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = this.terminalHistory.getPrevious();
+        if (prev) termInput.value = prev;
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = this.terminalHistory.getNext();
+        termInput.value = next;
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const completion = this.autocompleteEngine.getTabCompletion(termInput.value);
+        termInput.value = completion;
+      }
+      return;
+    }
+
+    // Arrow Key Navigation when not typing in terminal
+    const keyMap = {
+      'ArrowUp': 'up',
+      'ArrowDown': 'down',
+      'ArrowLeft': 'left',
+      'ArrowRight': 'right',
+      'w': 'up',
+      's': 'down',
+      'a': 'left',
+      'd': 'right'
+    };
+
+    if (keyMap[e.key]) {
+      e.preventDefault();
+      this.gitCli.execute(`git ${keyMap[e.key]}`);
+    }
   }
 
   render() {
-    const appRoot = document.getElementById('app-root');
-    if (!appRoot) return;
+    const root = document.getElementById('app-root');
+    if (!root) return;
 
-    // 1. Render Top App Bar
-    const topBarHtml = renderTopAppBar(this.currentRoute);
-
-    // 2. Render Main View Content
-    let mainViewHtml = '';
+    let viewHtml = '';
     const isGameplay = this.currentRoute === 'gameplay';
 
     switch (this.currentRoute) {
       case 'hero':
-        mainViewHtml = renderHeroView();
+        viewHtml = renderHeroView(
+          () => this.navigate('gameplay', { levelId: '01' }),
+          () => this.navigate('levels')
+        );
+        break;
+      case 'auth':
+        viewHtml = renderAuthView('login', () => this.navigate('dashboard'));
         break;
       case 'dashboard':
-      case 'main':
-        mainViewHtml = renderDashboardView();
+        viewHtml = renderDashboardView(
+          (lvlId) => this.navigate('gameplay', { levelId: lvlId }),
+          () => this.navigate('daily'),
+          () => this.navigate('world-map')
+        );
         break;
       case 'world-map':
-        mainViewHtml = renderWorldMapView();
+        viewHtml = renderWorldMapView((worldId) => this.navigate('levels', { worldFilter: String(worldId) }));
         break;
       case 'levels':
-        mainViewHtml = renderLevelSelectionView();
+        viewHtml = renderLevelSelectionView(this.selectedWorldFilter);
         break;
       case 'gameplay':
-        mainViewHtml = renderGameplayView(this.gameState, this.gitCli);
+        viewHtml = renderGameplayView(this.gameState, this.gitCli);
         break;
       case 'profile':
-        mainViewHtml = renderProfileView();
+        viewHtml = renderProfileView();
         break;
       case 'leaderboard':
-        mainViewHtml = renderLeaderboardView(this.leaderboardTab);
+        viewHtml = renderLeaderboardView(this.activeLeaderboardTab, (tab) => this.navigate('leaderboard', { leaderboardTab: tab }));
         break;
       case 'achievements':
-        mainViewHtml = renderAchievementsView();
+        viewHtml = renderAchievementsView(this.activeAchievementsCategory, (cat) => this.navigate('achievements', { achievementsCategory: cat }));
         break;
       case 'daily':
-        mainViewHtml = renderDailyChallengeView();
+        viewHtml = renderDailyChallengeView(() => this.navigate('gameplay', { levelId: '07' }));
         break;
       case 'settings':
-        mainViewHtml = renderSettingsView(this.settingsCategory);
+        viewHtml = renderSettingsView(this.activeSettingsCategory, (cat) => this.navigate('settings', { settingsCategory: cat }));
+        break;
+      case 'manual':
+        viewHtml = renderUserManualView();
         break;
       case 'editor':
-        mainViewHtml = renderLevelEditorView(this.editor);
+        viewHtml = renderLevelEditorView(this.editor);
         break;
       default:
-        mainViewHtml = renderHeroView();
-        break;
+        viewHtml = renderHeroView(() => this.navigate('gameplay'), () => this.navigate('levels'));
     }
 
-    // 3. Render Bottom Navigation Bar
+    const topAppBarHtml = renderTopAppBar(
+      this.currentRoute,
+      (r) => this.navigate(r),
+      () => this.navigate('settings')
+    );
     const bottomNavHtml = renderBottomNavBar(isGameplay);
 
-    // Assemble Full Shell
-    appRoot.innerHTML = `
-      ${topBarHtml}
-      <div id="view-content-area">${mainViewHtml}</div>
+    root.innerHTML = `
+      ${topAppBarHtml}
+      ${viewHtml}
       ${bottomNavHtml}
     `;
 
-    // 4. Attach Event Listeners
-    this.bindGlobalEvents();
+    this.bindEvents();
   }
 
-  bindGlobalEvents() {
-    // Top Bar Links
+  bindEvents() {
+    // Top App Bar Navigation
     document.getElementById('brand-logo-btn')?.addEventListener('click', () => this.navigate('hero'));
     document.getElementById('nav-main-btn')?.addEventListener('click', () => this.navigate('dashboard'));
-    document.getElementById('nav-logs-btn')?.addEventListener('click', () => this.navigate('leaderboard'));
+    document.getElementById('nav-logs-btn')?.addEventListener('click', () => this.navigate('achievements'));
     document.getElementById('nav-map-btn')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
     document.getElementById('nav-editor-btn')?.addEventListener('click', () => this.navigate('editor'));
-
-    document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
-    document.getElementById('top-pause-btn')?.addEventListener('click', () => soundFX.playKey());
-    document.getElementById('top-menu-btn')?.addEventListener('click', () => this.navigate('dashboard'));
+    document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
 
-    // Mobile Bottom Nav Links
+    // Bottom Navigation (Mobile)
     document.getElementById('mob-nav-dash')?.addEventListener('click', () => this.navigate('dashboard'));
     document.getElementById('mob-nav-map')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('mob-nav-play')?.addEventListener('click', () => this.navigate('gameplay', { levelId: this.currentLevelId }));
     document.getElementById('mob-nav-profile')?.addEventListener('click', () => this.navigate('profile'));
 
-    // View specific events
-    if (this.currentRoute === 'hero') {
-      document.getElementById('hero-play-btn')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
-      document.getElementById('hero-explore-btn')?.addEventListener('click', () => this.navigate('levels'));
-    } else if (this.currentRoute === 'dashboard' || this.currentRoute === 'main') {
-      document.getElementById('dash-continue-card')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
-      document.getElementById('dash-play-btn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.navigate('gameplay', { levelId: '07' });
-      });
-      document.getElementById('dash-world-progress')?.addEventListener('click', () => this.navigate('world-map'));
-      document.getElementById('dash-daily-card')?.addEventListener('click', () => this.navigate('daily'));
-    } else if (this.currentRoute === 'world-map') {
-      document.getElementById('node-world-1')?.addEventListener('click', () => this.navigate('levels'));
-      document.getElementById('node-world-2')?.addEventListener('click', () => this.navigate('levels'));
-      document.getElementById('node-world-3')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
-    } else if (this.currentRoute === 'levels') {
-      document.querySelectorAll('[data-level-id]').forEach(el => {
-        el.addEventListener('click', () => {
-          const isUnlocked = el.getAttribute('data-unlocked') === 'true';
-          const lvlId = el.getAttribute('data-level-id');
-          if (isUnlocked) {
-            this.navigate('gameplay', { levelId: lvlId });
-          } else {
-            soundFX.playError();
-          }
-        });
-      });
-    } else if (this.currentRoute === 'gameplay') {
-      this.bindGameplayEvents();
-    } else if (this.currentRoute === 'leaderboard') {
-      document.getElementById('tab-global-btn')?.addEventListener('click', () => {
-        this.leaderboardTab = 'global';
-        this.render();
-      });
-      document.getElementById('tab-friends-btn')?.addEventListener('click', () => {
-        this.leaderboardTab = 'friends';
-        this.render();
-      });
-      document.getElementById('tab-weekly-btn')?.addEventListener('click', () => {
-        this.leaderboardTab = 'weekly';
-        this.render();
-      });
-    } else if (this.currentRoute === 'daily') {
-      document.getElementById('start-daily-btn')?.addEventListener('click', () => {
-        this.navigate('gameplay', { levelId: '07' });
-      });
-    } else if (this.currentRoute === 'settings') {
-      this.bindSettingsEvents();
-    } else if (this.currentRoute === 'editor') {
-      this.bindEditorEvents();
-    }
-  }
+    // Hero View Events
+    document.getElementById('hero-play-btn')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '01' }));
+    document.getElementById('hero-explore-btn')?.addEventListener('click', () => this.navigate('levels'));
 
-  bindGameplayEvents() {
-    // Terminal input form
-    const form = document.getElementById('terminal-input-form');
-    const input = document.getElementById('terminal-cmd-input');
-    
-    if (form && input) {
-      form.addEventListener('submit', (e) => {
+    // Dashboard View Events
+    document.getElementById('dash-play-btn')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
+    document.getElementById('dash-continue-card')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
+    document.getElementById('dash-world-progress')?.addEventListener('click', () => this.navigate('world-map'));
+    document.getElementById('dash-daily-banner')?.addEventListener('click', () => this.navigate('daily'));
+    document.getElementById('dash-quick-commit')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '01' }));
+    document.getElementById('dash-quick-merge')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
+    document.getElementById('dash-quick-rebase')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '10' }));
+
+    // Level Selection World Filter Tabs & Cards
+    document.querySelectorAll('[data-world-filter]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const filter = e.currentTarget.getAttribute('data-world-filter');
+        this.selectedWorldFilter = filter === 'all' ? null : filter;
+        this.render();
+      });
+    });
+
+    document.querySelectorAll('.level-card[data-unlocked="true"]').forEach(card => {
+      card.addEventListener('click', () => {
+        const levelId = card.getAttribute('data-level-id');
+        if (levelId) this.navigate('gameplay', { levelId });
+      });
+    });
+
+    // World Map Interactive Nodes
+    document.querySelectorAll('[id^="node-world-"]').forEach(node => {
+      node.addEventListener('click', () => {
+        const worldId = node.id.replace('node-world-', '');
+        this.navigate('levels', { worldFilter: worldId });
+      });
+    });
+
+    // Gameplay Terminal Input & Buttons
+    const terminalForm = document.getElementById('terminal-form');
+    const terminalInput = document.getElementById('terminal-input');
+    if (terminalForm && terminalInput && this.gitCli) {
+      terminalForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const cmd = input.value;
-        input.value = '';
-        if (this.gitCli) {
+        const cmd = terminalInput.value;
+        if (cmd.trim()) {
+          this.terminalHistory.push(cmd);
+          terminalInput.value = '';
           this.gitCli.execute(cmd);
         }
       });
     }
 
-    // Reset & Undo buttons
-    document.getElementById('btn-reset-level')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.reset();
-    });
-    document.getElementById('btn-undo-move')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.undo();
+    // HUD Actions
+    document.getElementById('hud-hint-btn')?.addEventListener('click', () => {
+      if (!this.gameState) return;
+      const overlayHtml = renderHintDialog(this.gameState.levelDef, () => {
+        document.getElementById('hint-modal-overlay')?.remove();
+      });
+      const container = document.createElement('div');
+      container.innerHTML = overlayHtml;
+      document.body.appendChild(container.firstElementChild);
+
+      document.getElementById('hint-close-btn')?.addEventListener('click', () => {
+        document.getElementById('hint-modal-overlay')?.remove();
+      });
+      document.getElementById('hint-ok-btn')?.addEventListener('click', () => {
+        document.getElementById('hint-modal-overlay')?.remove();
+      });
     });
 
-    // 4-Way Movement D-Pad Controls (Up, Down, Left, Right)
-    document.getElementById('btn-dpad-up')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('up');
-    });
-    document.getElementById('btn-dpad-down')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('down');
-    });
-    document.getElementById('btn-dpad-left')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('left');
-    });
-    document.getElementById('btn-dpad-right')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('right');
+    document.getElementById('hud-reset-btn')?.addEventListener('click', () => {
+      if (this.gitCli) {
+        this.gitCli.execute('git reset');
+      }
     });
 
-    // Auto-focus terminal on desktop
-    if (window.innerWidth > 768 && input) {
-      input.focus();
-    }
-  }
-
-  bindSettingsEvents() {
-    const soundToggle = document.getElementById('toggle-sound');
-    const volSlider = document.getElementById('slider-volume');
-    const volDisplay = document.getElementById('volume-val-display');
-    const langSelect = document.getElementById('setting-language');
-    const themeSelect = document.getElementById('setting-theme');
-
-    soundToggle?.addEventListener('change', (e) => {
-      const enabled = e.target.checked;
-      soundFX.setMuted(!enabled);
-      StorageService.updateSettings({ soundEffects: enabled });
-      soundFX.playKey();
+    // Settings Category Buttons
+    ['general', 'sound', 'graphics', 'accessibility', 'controls'].forEach(cat => {
+      document.getElementById(`set-cat-${cat}`)?.addEventListener('click', () => {
+        this.activeSettingsCategory = cat;
+        this.render();
+      });
     });
 
-    volSlider?.addEventListener('input', (e) => {
+    // Settings Toggles & Sliders
+    document.getElementById('toggle-sound')?.addEventListener('change', (e) => {
+      appStore.updateSettings({ soundEffects: e.target.checked });
+      soundFX.enabled = e.target.checked;
+    });
+
+    document.getElementById('slider-volume')?.addEventListener('input', (e) => {
       const val = parseInt(e.target.value, 10);
-      if (volDisplay) volDisplay.textContent = `${val}%`;
+      appStore.updateSettings({ volume: val });
       soundFX.setVolume(val / 100);
-      StorageService.updateSettings({ volume: val });
+      const valDisplay = document.getElementById('volume-val-display');
+      if (valDisplay) valDisplay.textContent = `${val}%`;
     });
 
-    langSelect?.addEventListener('change', (e) => {
-      StorageService.updateSettings({ language: e.target.value });
-      soundFX.playKey();
+    document.getElementById('toggle-crt')?.addEventListener('change', (e) => {
+      appStore.updateSettings({ crtFilter: e.target.checked });
     });
 
-    themeSelect?.addEventListener('change', (e) => {
-      StorageService.updateSettings({ theme: e.target.value });
-      soundFX.playKey();
-    });
-  }
-
-  bindEditorEvents() {
-    // Tool buttons
-    document.querySelectorAll('.editor-tool-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tool = btn.getAttribute('data-tool-id');
-        this.editor.setTool(tool);
-        this.render();
-      });
+    document.getElementById('toggle-shake')?.addEventListener('change', (e) => {
+      appStore.updateSettings({ screenShake: e.target.checked });
     });
 
-    // Grid cells
-    document.querySelectorAll('.editor-cell').forEach(cell => {
-      cell.addEventListener('click', () => {
-        const x = parseInt(cell.getAttribute('data-cell-x'), 10);
-        const y = parseInt(cell.getAttribute('data-cell-y'), 10);
-        this.editor.handleCellClick(x, y);
-        this.render();
-      });
+    // Leaderboard Tabs
+    document.getElementById('tab-global-btn')?.addEventListener('click', () => {
+      this.activeLeaderboardTab = 'global';
+      this.render();
     });
-
-    // Clear
-    document.getElementById('editor-clear-btn')?.addEventListener('click', () => {
-      this.editor.clear();
+    document.getElementById('tab-friends-btn')?.addEventListener('click', () => {
+      this.activeLeaderboardTab = 'friends';
+      this.render();
+    });
+    document.getElementById('tab-weekly-btn')?.addEventListener('click', () => {
+      this.activeLeaderboardTab = 'weekly';
       this.render();
     });
 
-    // Test Level
-    const runTest = () => {
-      const customLevel = this.editor.exportLevel();
-      this.navigate('gameplay', { levelId: 'CUSTOM', customLevel });
-    };
+    // Level Editor Bindings
+    if (this.currentRoute === 'editor') {
+      document.querySelectorAll('[data-editor-tool]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.editor.setTool(btn.getAttribute('data-editor-tool'));
+          document.querySelectorAll('[data-editor-tool]').forEach(b => b.classList.remove('ring-2', 'ring-primary'));
+          btn.classList.add('ring-2', 'ring-primary');
+        });
+      });
 
-    document.getElementById('editor-test-btn')?.addEventListener('click', runTest);
-    document.getElementById('editor-mob-test')?.addEventListener('click', runTest);
+      document.querySelectorAll('[data-editor-cell]').forEach(cell => {
+        cell.addEventListener('click', () => {
+          const x = parseInt(cell.getAttribute('data-x'), 10);
+          const y = parseInt(cell.getAttribute('data-y'), 10);
+          this.editor.handleCellClick(x, y);
+          this.render();
+        });
+      });
+
+      document.getElementById('editor-clear-btn')?.addEventListener('click', () => {
+        this.editor.clear();
+        this.render();
+      });
+
+      const runTest = () => {
+        const customLevel = this.editor.exportLevel();
+        this.navigate('gameplay', { levelId: 'CUSTOM', customLevel });
+      };
+
+      document.getElementById('editor-test-btn')?.addEventListener('click', runTest);
+    }
   }
 }
 
-// Bootstrap GitQuest application
+// Bootstrap GitHero application
 window.addEventListener('DOMContentLoaded', () => {
-  const app = new GitQuestApp();
+  const app = new GitHeroApp();
   app.init();
 });

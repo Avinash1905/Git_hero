@@ -1,4 +1,4 @@
-// GitQuest Web Audio Synthesizer (Zero External Dependencies)
+// GitHero Web Audio Synthesizer (Zero External Dependencies)
 
 class SoundFX {
   constructor() {
@@ -8,6 +8,7 @@ class SoundFX {
   }
 
   init() {
+    if (typeof window === 'undefined') return;
     if (!this.ctx) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (AudioContext) {

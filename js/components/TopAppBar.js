@@ -10,25 +10,25 @@ export function renderTopAppBar(activeRoute = 'main', onNavigate, onOpenSettings
     <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-hud-margin h-16 bg-surface/80 backdrop-blur-xl bg-surface-container-high/80 border-b border-outline-variant/30 shadow-md">
       <div class="flex items-center gap-md">
         <button id="brand-logo-btn" class="text-headline-sm font-headline-sm font-bold text-primary tracking-tighter hover:opacity-90 transition-opacity flex items-center gap-2">
-          GitQuest
+          GitHero
         </button>
       </div>
       
       <nav class="hidden md:flex gap-lg h-full items-end">
         <button id="nav-main-btn" class="${isMain ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
-          ~/quest/main
+          ~/githero/main
         </button>
         <button id="nav-logs-btn" class="${isLogs ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
-          ~/quest/logs
+          ~/githero/logs
         </button>
         <button id="nav-map-btn" class="${activeRoute === 'world-map' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
-          ~/quest/world-map
+          ~/githero/world-map
         </button>
         <button id="nav-levels-btn" class="${activeRoute === 'levels' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
-          ~/quest/levels
+          ~/githero/levels
         </button>
         <button id="nav-editor-btn" class="${activeRoute === 'editor' ? 'text-primary font-bold border-b-2 border-primary pb-1' : 'text-on-surface-variant font-medium pb-1 hover:bg-surface-bright/50'} text-terminal-label font-terminal-label transition-colors">
-          ~/quest/editor
+          ~/githero/editor
         </button>
       </nav>
 

@@ -14,7 +14,7 @@ export function renderHeroView(onPlay, onExplore) {
           </div>
 
           <h1 class="text-display-lg font-display-lg text-on-surface tracking-tighter uppercase">
-            GITQUEST
+            GITHERO
           </h1>
 
           <p class="text-headline-sm font-headline-sm text-on-surface-variant max-w-2xl text-center">

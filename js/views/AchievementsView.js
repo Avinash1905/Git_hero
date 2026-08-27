@@ -69,7 +69,7 @@ export function renderAchievementsView() {
       <!-- Header -->
       <header class="mb-lg">
         <h1 class="font-display-lg text-display-lg text-on-surface mb-unit">Achievements</h1>
-        <p class="font-terminal-code text-terminal-code text-on-surface-variant">~/quest/achievements</p>
+        <p class="font-terminal-code text-terminal-code text-on-surface-variant">~/githero/achievements</p>
         
         <div class="mt-md flex items-center gap-md">
           <div class="flex flex-col">

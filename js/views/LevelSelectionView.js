@@ -1,10 +1,12 @@
-// LevelSelectionView - 100% faithful to Stitch Level Selection Screen
-// Strict Numeric Ordering & Progressive Unlocking System
+/**
+ * GitHero Level Selection View
+ * Displays all 30+ handcrafted levels across the 6 worlds with strict numeric ordering and unlock states.
+ */
 
-import { LEVELS } from '../engine/Levels.js';
+import { LEVELS, WORLDS } from '../engine/Levels.js';
 import { StorageService } from '../services/StorageService.js';
 
-export function renderLevelSelectionView() {
+export function renderLevelSelectionView(selectedWorldId = null) {
   const userState = StorageService.load();
   const completedLevels = userState.progress.levels || {};
 
@@ -13,10 +15,23 @@ export function renderLevelSelectionView() {
     'https://lh3.googleusercontent.com/aida-public/AB6AXuAVIOqfhUkqQRqZZ0eBKIYDhTz_8YDP_tbP1ZXG76PqKxkw-R4nRxnl_cJ8r7zhLmH2unGJZ0BGqERq2po3UekgP2UnY-KA7VeGtd5TdFf_C55pFkcoL0wTuO1JxUPRSPOgMcJPILrayDXuqa3C68-q7nuGWHllIdWTFoUiSMDn9VvSWo50232wQ-DibLJ2gmEzs4958IM68uiNsxeSzDlM0yUVRU7TO08CFZSvM4JgSw-idGG5tMo'
   ];
 
-  // Strictly sort levels numerically: 01, 02, 03, ... 16
-  const sortedLevels = Object.values(LEVELS).sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
+  const allLevels = Object.values(LEVELS).sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
+  const filteredLevels = selectedWorldId ? allLevels.filter(lvl => lvl.world === parseInt(selectedWorldId, 10)) : allLevels;
 
-  const cardsHtml = sortedLevels.map((lvl, index) => {
+  const worldFilterTabsHtml = `
+    <div class="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+      <button data-world-filter="all" class="px-4 py-1.5 rounded-lg text-xs font-terminal-label whitespace-nowrap transition-all ${!selectedWorldId ? 'bg-primary text-on-primary font-bold shadow-md' : 'bg-surface-container text-on-surface-variant hover:text-on-surface'}">
+        ALL WORLDS (30)
+      </button>
+      ${WORLDS.map(w => `
+        <button data-world-filter="${w.id}" class="px-4 py-1.5 rounded-lg text-xs font-terminal-label whitespace-nowrap transition-all ${selectedWorldId === String(w.id) ? 'bg-primary text-on-primary font-bold shadow-md' : 'bg-surface-container text-on-surface-variant hover:text-on-surface'}">
+          WORLD ${w.id}: ${w.name.toUpperCase()}
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  const cardsHtml = filteredLevels.map((lvl, index) => {
     const numId = parseInt(lvl.id, 10);
     const prevId = String(numId - 1).padStart(2, '0');
     
@@ -24,7 +39,6 @@ export function renderLevelSelectionView() {
     const isUnlocked = numId === 1 || !!completedLevels[prevId]?.completed;
     const prog = completedLevels[lvl.id] || { completed: false, stars: 0 };
     const isCompleted = prog.completed;
-    const isActive = isUnlocked && !isCompleted;
     const thumbUrl = levelThumbnails[index % levelThumbnails.length];
 
     // Generate stars
@@ -58,43 +72,40 @@ export function renderLevelSelectionView() {
               <span class="bg-primary text-on-primary px-2.5 py-1 rounded text-terminal-label font-terminal-label font-bold shadow-md flex items-center gap-1">
                 <span class="material-symbols-outlined text-[14px]">check</span> COMPLETED
               </span>
-            ` : (isActive ? `
-              <span class="bg-secondary text-on-secondary px-2.5 py-1 rounded text-terminal-label font-terminal-label font-bold animate-pulse shadow-md flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px]">play_arrow</span> AVAILABLE
+            ` : (isUnlocked ? `
+              <span class="bg-surface-container-high/90 text-primary border border-primary/40 px-2.5 py-1 rounded text-terminal-label font-terminal-label font-bold backdrop-blur-md">
+                UNLOCKED
               </span>
             ` : `
-              <span class="bg-surface-variant/90 text-on-surface-variant px-2.5 py-1 rounded text-terminal-label font-terminal-label border border-outline-variant/40 flex items-center gap-1 backdrop-blur-sm">
+              <span class="bg-surface-dim/80 text-on-surface-variant px-2.5 py-1 rounded text-terminal-label font-terminal-label flex items-center gap-1 border border-outline-variant/30">
                 <span class="material-symbols-outlined text-[14px]">lock</span> LOCKED
               </span>
             `)}
           </div>
 
-          <!-- Difficulty Pill -->
-          <div class="absolute bottom-sm left-sm">
-            <span class="px-2 py-0.5 rounded text-[10px] font-terminal-label font-bold border ${diffBadgeColor}">
-              ${lvl.difficulty}
+          <!-- Level Number & World -->
+          <div class="absolute bottom-sm left-sm z-10">
+            <span class="text-terminal-label font-terminal-label text-primary font-bold tracking-widest text-xs uppercase">
+              W${lvl.world} · LEVEL ${lvl.id}
             </span>
+            <h3 class="text-headline-sm font-headline-sm text-on-surface text-base sm:text-lg font-bold">${lvl.name}</h3>
           </div>
         </div>
 
-        <div class="p-md">
-          <div class="flex justify-between items-start mb-2">
-            <div>
-              <span class="text-[10px] text-on-surface-variant font-terminal-label uppercase tracking-wider">World 0${lvl.world}</span>
-              <h3 class="text-headline-sm font-headline-sm text-on-surface ${isUnlocked ? 'group-hover:text-primary' : ''} transition-colors">Level ${lvl.id}: ${lvl.name}</h3>
-            </div>
-            <div class="flex items-center gap-0.5">
+        <div class="p-md bg-surface-container flex flex-col justify-between h-36">
+          <p class="text-on-surface-variant text-xs font-body-md line-clamp-2">${lvl.description}</p>
+          
+          <div class="flex items-center justify-between pt-sm border-t border-outline-variant/20 mt-auto">
+            <div class="flex items-center space-x-1">
               ${starsHtml}
             </div>
-          </div>
-          
-          <p class="text-body-md font-body-md text-on-surface-variant text-sm line-clamp-2 mb-md">
-            ${lvl.description}
-          </p>
-
-          <div class="flex justify-between items-center pt-sm border-t border-outline-variant/30 text-xs">
-            <span class="text-terminal-label font-terminal-label text-tertiary font-bold">+${lvl.xpReward} XP</span>
-            <span class="text-terminal-code font-terminal-code text-on-surface-variant">${lvl.commitsReq} commits req.</span>
+            
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-terminal-label border ${diffBadgeColor}">
+                ${lvl.difficulty}
+              </span>
+              <span class="text-secondary font-hud-stat text-xs font-bold">+${lvl.xpReward || 500} XP</span>
+            </div>
           </div>
         </div>
       </article>
@@ -102,18 +113,21 @@ export function renderLevelSelectionView() {
   }).join('');
 
   return `
-    <main class="flex-1 p-hud-margin pt-24 pb-28 md:pb-12 max-w-7xl mx-auto min-h-screen">
-      <header class="mb-lg">
-        <div class="glass-panel inline-block px-4 py-2 rounded-lg border border-outline-variant/50 mb-4">
-          <span class="text-terminal-label font-terminal-label text-on-surface-variant">path: </span>
+    <main class="pt-24 pb-28 md:pb-12 px-hud-margin max-w-7xl mx-auto min-h-screen">
+      <!-- Section Header -->
+      <div class="mb-6">
+        <div class="flex items-center gap-sm mb-xs">
           <span class="text-terminal-code font-terminal-code text-primary">~/levels/select<span class="cursor-blink inline-block w-2 h-4 bg-primary ml-1 align-middle"></span></span>
         </div>
-        <h1 class="text-headline-md font-headline-md text-on-surface">Select Level</h1>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-2 max-w-2xl">Traverse 16 progressively complex Git challenge partitions. Solve puzzles to unlock advanced repositories.</p>
-      </header>
+        <h1 class="text-display-lg font-display-lg text-on-surface">Mission Partitions</h1>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-2 max-w-2xl">Traverse 30 progressively complex Git challenge partitions across 6 worlds.</p>
+      </div>
 
-      <!-- Level Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-lg">
+      <!-- World Tabs -->
+      ${worldFilterTabsHtml}
+
+      <!-- Grid of Levels -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md">
         ${cardsHtml}
       </div>
     </main>
