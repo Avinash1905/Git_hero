@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GitQuest Game Engine Automated Test Runner</title>
+  <style>
+    body { font-family: ui-monospace, monospace; background: #0d1117; color: #c9d1d9; padding: 24px; }
+    h1 { color: #58a6ff; font-size: 20px; }
+    .passed { color: #7ee787; font-weight: bold; }
+    .failed { color: #f85149; font-weight: bold; }
+    .summary { margin-top: 20px; padding: 16px; background: #161b22; border-radius: 6px; border: 1px solid #30363d; }
+    .suite-card { margin-bottom: 12px; padding: 12px; background: #21262d; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>GitQuest Engine Automated Test Suite</h1>
+  <div id="test-output">Running tests...</div>
+
+  <script type="module">
+    import { runGitQuestEngineTests } from './js/engine/tests/run-tests.js';
+
+    async function start() {
+      const output = document.getElementById('test-output');
+      const results = await runGitQuestEngineTests();
+
+      let html = '';
+      for (const s of results.suites) {
+        const cls = s.failed === 0 ? 'passed' : 'failed';
+        html += `<div class="suite-card">
+          <div class="${cls}">[${s.failed === 0 ? 'PASS' : 'FAIL'}] ${s.name} (${s.passed}/${s.total})</div>
+        </div>`;
+      }
+
+      html += `<div class="summary">
+        <h2 class="${results.allPassed ? 'passed' : 'failed'}">
+          ${results.allPassed ? '✓ ALL TESTS PASSED' : '✕ SOME TESTS FAILED'}: ${results.passed}/${results.total}
+        </h2>
+      </div>`;
+
+      output.innerHTML = html;
+      window.__TEST_RESULTS__ = results;
+    }
+
+    start();
+  </script>
+</body>
+</html>
