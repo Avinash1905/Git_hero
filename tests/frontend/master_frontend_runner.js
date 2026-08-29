@@ -51,6 +51,7 @@ import { runProfileAnalyticsTests } from './profile_skill_radar.test.js';
 import { runLevelProgressionTests } from './levels_progression_engine.test.js';
 import { runVisualizersTerminalTests } from './visualizers_terminal_tools.test.js';
 import { runApiOfflineCacheTests } from './api_offline_cache.test.js';
+import { runExpandedFeaturesStudiosTests } from './expanded_features_studios.test.js';
 
 async function runAll() {
   console.log('===============================================================');
@@ -108,7 +109,8 @@ async function runAll() {
     runProfileAnalyticsTests,
     runLevelProgressionTests,
     runVisualizersTerminalTests,
-    runApiOfflineCacheTests
+    runApiOfflineCacheTests,
+    runExpandedFeaturesStudiosTests
   ];
 
   for (const suite of suites) {

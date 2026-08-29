@@ -8,6 +8,10 @@ export class Vector2D {
     this.y = Number(y) || 0;
   }
 
+  static zero() {
+    return new Vector2D(0, 0);
+  }
+
   static from(obj) {
     if (!obj) return new Vector2D(0, 0);
     return new Vector2D(obj.x ?? 0, obj.y ?? 0);

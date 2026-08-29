@@ -1,7 +1,7 @@
 // Cryptographic utilities: Password hashing, verification, and JWT signing
 import crypto from 'node:crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'gitquest_super_secret_production_key_2026_x89';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_insecure_jwt_secret_placeholder';
 const JWT_EXPIRES_IN_SEC = 7 * 24 * 60 * 60; // 7 days
 
 export function hashPassword(password) {

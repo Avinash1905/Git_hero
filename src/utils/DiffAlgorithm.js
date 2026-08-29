@@ -67,3 +67,5 @@ export class DiffAlgorithm {
     return output;
   }
 }
+
+export const diffAlgorithm = DiffAlgorithm;

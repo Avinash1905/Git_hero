@@ -3,7 +3,7 @@
  */
 
 import { authStore } from '../state/DomainStores.js';
-import { authService } from '../../js/services/authService.js';
+import { authService } from '../services/authService.js';
 
 export function useAuth() {
   const state = authStore.getState();

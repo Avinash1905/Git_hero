@@ -2,9 +2,9 @@
  * GitQuest Feature: Settings Controller & Audio / Keyboard Configuration Engine
  */
 
-import { StorageService } from '../../js/services/StorageService.js';
-import { soundFX } from '../../js/audio.js';
-import { notificationStore } from '../../src/state/DomainStores.js';
+import { StorageService } from '../../../js/services/StorageService.js';
+import { soundFX } from '../../../js/audio.js';
+import { notificationStore } from '../../state/DomainStores.js';
 
 export class SettingsController {
   constructor() {

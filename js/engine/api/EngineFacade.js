@@ -37,6 +37,14 @@ import {
   DiffHandler,
   LogHandler
 } from '../commands/handlers/AdvancedGitHandlers.js';
+import {
+  TagHandler,
+  RevertHandler,
+  SubmoduleHandler,
+  WorktreeHandler,
+  BundleHandler,
+  BlameHandler
+} from '../commands/handlers/GitExtendedHandlers.js';
 import { ObjectiveManager } from '../objectives/ObjectiveManager.js';
 import { PuzzleSystem } from '../puzzles/PuzzleSystem.js';
 import { PlayerState, GitRepoState, WorldState } from '../state/PlayerState.js';
@@ -105,6 +113,12 @@ export class GitQuestEngine {
     this.commandRegistry.register('git', 'cherry-pick', new CherryPickHandler());
     this.commandRegistry.register('git', 'diff', new DiffHandler());
     this.commandRegistry.register('git', 'log', new LogHandler());
+    this.commandRegistry.register('git', 'tag', new TagHandler());
+    this.commandRegistry.register('git', 'revert', new RevertHandler());
+    this.commandRegistry.register('git', 'submodule', new SubmoduleHandler());
+    this.commandRegistry.register('git', 'worktree', new WorktreeHandler());
+    this.commandRegistry.register('git', 'bundle', new BundleHandler());
+    this.commandRegistry.register('git', 'blame', new BlameHandler());
 
     // Movement subcommands
     this.commandRegistry.register('git', 'left', new MovementHandler('left'));

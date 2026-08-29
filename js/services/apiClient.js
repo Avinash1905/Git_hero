@@ -1,23 +1,30 @@
 // ApiClient: Centralized HTTP Request Client with JWT Authentication Injection
 
-const BASE_URL = window.location.origin;
+const BASE_URL = typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost:3000';
 
 class ApiClient {
   constructor() {
-    this.token = localStorage.getItem('gitquest_auth_token') || null;
+    this.token = (typeof localStorage !== 'undefined' && localStorage.getItem)
+      ? localStorage.getItem('gitquest_auth_token')
+      : null;
   }
 
   setToken(token) {
     this.token = token;
-    if (token) {
-      localStorage.setItem('gitquest_auth_token', token);
-    } else {
-      localStorage.removeItem('gitquest_auth_token');
+    if (typeof localStorage !== 'undefined' && localStorage.setItem) {
+      if (token) {
+        localStorage.setItem('gitquest_auth_token', token);
+      } else {
+        localStorage.removeItem('gitquest_auth_token');
+      }
     }
   }
 
   getToken() {
-    return this.token || localStorage.getItem('gitquest_auth_token');
+    if (this.token) return this.token;
+    return (typeof localStorage !== 'undefined' && localStorage.getItem)
+      ? localStorage.getItem('gitquest_auth_token')
+      : null;
   }
 
   async request(endpoint, options = {}) {

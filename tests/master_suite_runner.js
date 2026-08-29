@@ -17,7 +17,9 @@ import { testWorld04And05 } from './worlds/individual/world_04_solvability.test.
 import { testWorld05And06 } from './worlds/individual/world_05_solvability.test.js';
 import { testWorlds07To10 } from './worlds/individual/world_07_solvability.test.js';
 import { testEndgameWorlds11To20 } from './worlds/individual/worlds_11_to_20_solvability.test.js';
+import { runExpandedLevelsAndEngineSuite } from './levels/expanded_levels_21_to_25.test.js';
 import { runBackendIntegrationSuite } from './integration/backend_suite.test.js';
+import { testAllModulesIntegrity } from './unit/modules_integrity.test.js';
 
 async function runMasterSuite() {
   console.log('\n========================================================');
@@ -25,6 +27,7 @@ async function runMasterSuite() {
   console.log('========================================================\n');
 
   try {
+    await testAllModulesIntegrity();
     runMathTests();
     runFormatterAndValidationTests();
     runPuzzleEngineTests();
@@ -39,6 +42,7 @@ async function runMasterSuite() {
     testWorld05And06();
     testWorlds07To10();
     testEndgameWorlds11To20();
+    runExpandedLevelsAndEngineSuite();
     testCommandEngine();
     runBackendIntegrationSuite();
 
