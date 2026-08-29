@@ -17,7 +17,7 @@ export class GitCLI {
       {
         type: 'status',
         branch: `level-${this.state.levelId}`,
-        objective: 'Move the box to the goal',
+        objective: this.state.levelDef?.description || 'Move the box to the goal',
         boxStatus: this.state.isGoalReached ? 'ON GOAL (READY TO COMMIT)' : 'NOT ON GOAL',
         progress: this.state.isGoalReached ? '100%' : '72%'
       }
@@ -32,7 +32,7 @@ export class GitCLI {
       {
         type: 'status',
         branch: `level-${this.state.levelId}`,
-        objective: this.state.levelDef.description || 'Move the box to the goal',
+        objective: this.state.levelDef?.description || 'Move the box to the goal',
         boxStatus: this.state.isGoalReached ? 'ON GOAL (READY TO COMMIT)' : 'NOT ON GOAL',
         progress: this.state.isGoalReached ? '100%' : '45%'
       }
@@ -63,10 +63,21 @@ export class GitCLI {
       return { success: true };
     }
 
+    if (cmd === 'undo') {
+      const res = this.engine.undo();
+      if (res) {
+        this.logs.push({ type: 'output', text: '← Reverted to previous game state.' });
+      } else {
+        this.logs.push({ type: 'error', text: 'No previous state to undo.' });
+      }
+      if (this.onLogUpdate) this.onLogUpdate();
+      return { success: Boolean(res) };
+    }
+
     if (cmd === 'help') {
       this.logs.push({
         type: 'output',
-        text: `GitQuest Supported Commands:\n  git left            - Move player left\n  git right           - Move player right\n  git up              - Move player up\n  git down            - Move player down\n  git push            - Push the payload box forward\n  git pull            - Pull the payload box toward player\n  git pull left       - Pull object on the left toward player\n  git pull right      - Pull object on the right toward player\n  git pull up         - Pull object above toward player\n  git pull down       - Pull object below toward player\n  git status          - Check current branch, stage status & objective\n  git commit          - Commit and finalize solved level\n  git switch <lvl>    - Switch to another level (e.g. git switch 08)\n  clear               - Clear terminal screen`
+        text: `GitQuest Supported Commands:\n  git left            - Move player left\n  git right           - Move player right\n  git up              - Move player up\n  git down            - Move player down\n  git push            - Push the payload box forward\n  git pull            - Pull the payload box toward player\n  git pull left       - Pull object on the left toward player\n  git pull right      - Pull object on the right toward player\n  git pull up         - Pull object above toward player\n  git pull down       - Pull object below toward player\n  git status          - Check current branch, stage status & objective\n  git commit          - Commit and finalize solved level\n  git switch <lvl>    - Switch to another level (e.g. git switch 08)\n  git branch <name>   - Create or switch to branch\n  git merge <branch>  - Fast-forward merge branch\n  git rebase <branch> - Rebase current branch\n  git stash           - Temporarily shelter payload\n  git cherry-pick <h> - Cherry-pick commit node\n  git diff            - Inspect changes in working tree\n  git log             - View commit history tree\n  undo                - Undo previous movement\n  clear               - Clear terminal screen`
       });
       if (this.onLogUpdate) this.onLogUpdate();
       return { success: true };
@@ -83,7 +94,7 @@ export class GitCLI {
           this.logs.push({
             type: 'status',
             branch: `level-${this.state.levelId}`,
-            objective: this.state.levelDef.description || 'Move the box to the goal',
+            objective: this.state.levelDef?.description || 'Move the box to the goal',
             boxStatus: onGoal ? 'ON GOAL (READY TO COMMIT)' : 'NOT ON GOAL',
             progress: onGoal ? '100% (Changes staged)' : `${Math.min(90, Math.floor((this.state.moves * 12) + 20))}%`
           });
@@ -156,7 +167,7 @@ export class GitCLI {
               type: 'commit_success',
               commitHash: Math.random().toString(16).substring(2, 9),
               branch: `level-${this.state.levelId}`,
-              message: `Solve level ${this.state.levelId}: ${this.state.levelDef.name}`,
+              message: `Solve level ${this.state.levelId}: ${this.state.levelDef?.name || 'Completed'}`,
               filesChanged: '1 file changed, 1 insertion(+)'
             });
             if (this.onCommitSuccess) {
@@ -258,6 +269,81 @@ export class GitCLI {
               text: `fatal: missing level argument. Usage: git switch <level_id>`
             });
           }
+          break;
+        }
+
+        case 'branch': {
+          soundFX.playSuccess();
+          if (arg) {
+            this.logs.push({ type: 'output', text: `Created branch '${arg}'` });
+          } else {
+            this.logs.push({ type: 'output', text: `* level-${this.state.levelId}\n  main\n  develop` });
+          }
+          break;
+        }
+
+        case 'merge': {
+          if (arg) {
+            soundFX.playSuccess();
+            this.logs.push({ type: 'output', text: `Updating level-${this.state.levelId}..\nFast-forward merge with '${arg}' complete.` });
+          } else {
+            soundFX.playError();
+            this.logs.push({ type: 'error', text: 'fatal: No branch specified to merge. Usage: git merge <branch>' });
+          }
+          break;
+        }
+
+        case 'rebase': {
+          if (arg) {
+            soundFX.playSuccess();
+            this.logs.push({ type: 'output', text: `First, rewinding head to replay work on top of '${arg}'...\nApplying commit patches... Done.` });
+          } else {
+            soundFX.playError();
+            this.logs.push({ type: 'error', text: 'fatal: No upstream branch specified. Usage: git rebase <upstream>' });
+          }
+          break;
+        }
+
+        case 'stash': {
+          soundFX.playSuccess();
+          if (arg === 'pop') {
+            this.logs.push({ type: 'output', text: 'On branch main: Restored working tree changes from stash@{0}.' });
+          } else {
+            this.logs.push({ type: 'output', text: 'Saved working directory and index state WIP on current branch.' });
+          }
+          break;
+        }
+
+        case 'cherry-pick': {
+          if (arg) {
+            soundFX.playSuccess();
+            this.logs.push({ type: 'output', text: `[level-${this.state.levelId} ${arg.substring(0, 7)}] Cherry-picked commit applied.` });
+          } else {
+            soundFX.playError();
+            this.logs.push({ type: 'error', text: 'fatal: commit hash required. Usage: git cherry-pick <commit_hash>' });
+          }
+          break;
+        }
+
+        case 'diff': {
+          soundFX.playSuccess();
+          const onGoal = this.state.checkGoal();
+          this.logs.push({
+            type: 'output',
+            text: onGoal
+              ? `diff --git a/payload.js b/payload.js\n--- a/payload.js\n+++ b/payload.js\n@@ -1 +1 @@\n-status: pending\n+status: aligned_on_goal`
+              : `diff --git a/payload.js b/payload.js\n--- a/payload.js\n+++ b/payload.js\n@@ -1 +1 @@\n-status: dirty\n+status: navigating_corridor`
+          });
+          break;
+        }
+
+        case 'log': {
+          soundFX.playSuccess();
+          const hash = Math.random().toString(16).substring(2, 9);
+          this.logs.push({
+            type: 'output',
+            text: `* ${hash} (HEAD -> level-${this.state.levelId})\n| Author: GitQuest Player\n| Date:   ${new Date().toISOString()}\n|\n|     Checkpoint in ${this.state.levelDef?.name || 'Level'}\n* e4a1b02 Foundations Initial Genesis`
+          });
           break;
         }
 
