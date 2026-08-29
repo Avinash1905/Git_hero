@@ -1,24 +1,47 @@
-// GameState: In-memory live state for puzzle arena and HUD
+/**
+ * GameState: Live in-memory state for puzzle arena and HUD
+ * Backed by the GitQuest Core State Engine & Global Level Registry
+ */
 
 import { LEVELS } from './Levels.js';
 import { StorageService } from '../services/StorageService.js';
+import { GitRepoState, PlayerState, WorldState } from './state/PlayerState.js';
+import { HistoryManager, StatsTracker } from './state/HistoryManager.js';
+import { ScoringCalculator } from './progression/ProgressionManager.js';
 
 export class GameState {
   constructor(levelId = '07') {
+    this.historyManager = new HistoryManager(200);
+    this.stats = new StatsTracker();
+    this.gitRepo = new GitRepoState();
+    this.worldState = new WorldState();
     this.initLevel(levelId);
   }
 
   initLevel(levelId) {
-    const levelDef = LEVELS[levelId] || LEVELS['07'];
+    const normId = String(levelId || '07').padStart(2, '0');
+    const levelDef = LEVELS[normId] || LEVELS['07'];
     this.levelId = levelDef.id;
     this.levelDef = levelDef;
     this.gridSize = levelDef.gridSize || 6;
-    
+    this.width = levelDef.width || this.gridSize;
+    this.height = levelDef.height || this.gridSize;
+
     // Coordinates
-    this.player = { ...levelDef.player, dir: 'up' };
-    this.box = { ...levelDef.box };
-    this.goal = { ...levelDef.goal };
-    this.walls = [...levelDef.walls];
+    this.player = {
+      x: levelDef.player?.x ?? 1,
+      y: levelDef.player?.y ?? 1,
+      dir: 'up'
+    };
+    this.box = {
+      x: levelDef.box?.x ?? 2,
+      y: levelDef.box?.y ?? 2
+    };
+    this.goal = {
+      x: levelDef.goal?.x ?? 4,
+      y: levelDef.goal?.y ?? 2
+    };
+    this.walls = [...(levelDef.walls || [])];
     this.hazards = [...(levelDef.hazards || [])];
 
     // Stats & Counters
@@ -30,16 +53,28 @@ export class GameState {
     this.startTime = Date.now();
     this.elapsedSeconds = 0;
     this.timerInterval = null;
-    
+
     // Status
     this.isCommitted = false;
     this.isGoalReached = this.checkGoal();
-    this.history = []; // for undo
-    
-    // Lives
-    const userState = StorageService.load();
-    this.lives = userState.player.lives || 3;
-    this.xp = userState.player.xp || 2450;
+    this.history = []; // legacy history support
+    this.historyManager.clear();
+    this.stats.reset();
+
+    // Git Repo state
+    this.gitRepo = new GitRepoState({
+      currentBranch: `level-${this.levelId}`
+    });
+
+    // Lives & XP from persistent storage
+    try {
+      const userState = StorageService.load();
+      this.lives = userState?.player?.lives ?? 3;
+      this.xp = userState?.player?.xp ?? 2450;
+    } catch {
+      this.lives = 3;
+      this.xp = 2450;
+    }
   }
 
   startTimer(onTick) {
@@ -65,13 +100,15 @@ export class GameState {
   }
 
   saveHistory() {
-    this.history.push({
+    const snapshot = {
       player: { ...this.player },
       box: { ...this.box },
       moves: this.moves,
       pushCount: this.pushCount,
       pullCount: this.pullCount
-    });
+    };
+    this.history.push(snapshot);
+    this.historyManager.pushState(snapshot);
   }
 
   undo() {
@@ -91,9 +128,10 @@ export class GameState {
   }
 
   calculateScore() {
-    const base = 10000;
-    const timePenalty = this.elapsedSeconds * 15;
-    const movePenalty = this.moves * 35;
-    return Math.max(1200, base - timePenalty - movePenalty);
+    return ScoringCalculator.calculateScore(
+      this.moves,
+      this.elapsedSeconds,
+      this.levelDef?.commitsReq || 2
+    );
   }
 }
