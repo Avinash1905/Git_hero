@@ -1,6 +1,7 @@
 // BottomNavBar Component - Suppressed on gameplay screen to keep terminal as primary interface
 
-export function renderBottomNavBar(isGameplay = false) {
+export function renderBottomNavBar(arg = false) {
+  const isGameplay = typeof arg === 'boolean' ? arg : (arg?.isGameplay || arg?.currentRoute === 'gameplay' || arg?.currentRoute === 'game');
   if (isGameplay) {
     return ''; // No bottom buttons on gameplay screen
   }
@@ -19,7 +20,11 @@ export function renderBottomNavBar(isGameplay = false) {
         <span class="material-symbols-outlined mb-1">sports_esports</span>
         <span class="text-terminal-label font-terminal-label">Play</span>
       </button>
-      <button id="mob-nav-profile" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:bg-surface-variant/60 rounded-xl transition-colors">
+      <button id="mob-nav-manual" class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant/60 rounded-xl transition-colors">
+        <span class="material-symbols-outlined mb-1">menu_book</span>
+        <span class="text-terminal-label font-terminal-label">Manual</span>
+      </button>
+      <button id="mob-nav-profile" class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant/60 rounded-xl transition-colors">
         <span class="material-symbols-outlined mb-1">person</span>
         <span class="text-terminal-label font-terminal-label">Profile</span>
       </button>

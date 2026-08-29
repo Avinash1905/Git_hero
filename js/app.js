@@ -1,200 +1,227 @@
-// GitQuest SPA Main Application Controller
+// GitQuest Production SPA Main Application Controller
+// Orchestrates routing, auth guarding, GameEngineAdapter, reactive state stores,
+// 250-level progression, terminal integration, and Stitch design views.
 
-import { soundFX } from './audio.js';
-import { StorageService } from './services/StorageService.js';
-import { LEVELS } from './engine/Levels.js';
-import { GameState } from './engine/GameState.js';
-import { GridEngine } from './engine/GridEngine.js';
-import { GitCLI } from './terminal/GitCLI.js';
+import { soundService } from '../src/services/soundService.js';
+import { authService } from '../src/services/authService.js';
+import { playerService } from '../src/services/playerService.js';
+import { levelService } from '../src/services/levelService.js';
+import { progressService } from '../src/services/progressService.js';
+import { leaderboardService } from '../src/services/leaderboardService.js';
+import { achievementService } from '../src/services/achievementService.js';
+import { challengeService } from '../src/services/challengeService.js';
 
-// Components
+import { authStore } from '../src/state/AuthStore.js';
+import { playerStore } from '../src/state/PlayerStore.js';
+import { levelStore } from '../src/state/LevelStore.js';
+import { gameStore } from '../src/state/GameStore.js';
+import { uiStore } from '../src/state/UIStore.js';
+import { leaderboardStore, achievementStore } from '../src/state/LeaderboardStore.js';
+
+import { AuthManager } from '../src/auth/AuthManager.js';
+import { AuthGuard } from '../src/auth/AuthGuards.js';
+import { GameEngineAdapter } from '../src/adapters/GameEngineAdapter.js';
+import { TerminalController } from '../src/features/terminal/TerminalController.js';
+import { LevelVictoryHandler } from '../src/features/gameplay/LevelVictoryHandler.js';
+import { GameControls } from '../src/features/gameplay/GameControls.js';
+import { ParticleEffects } from '../src/features/gameplay/ParticleEffects.js';
+
+// App Shell Components
 import { renderTopAppBar } from './components/TopAppBar.js';
 import { renderBottomNavBar } from './components/BottomNavBar.js';
-import { renderLevelCompleteModal, initParticleSystem } from './components/LevelCompleteModal.js';
 
-// Views
-import { renderHeroView } from './views/HeroView.js';
-import { renderDashboardView } from './views/DashboardView.js';
-import { renderWorldMapView } from './views/WorldMapView.js';
-import { renderLevelSelectionView } from './views/LevelSelectionView.js';
-import { renderGameplayView, generateGridTilesHtml } from './views/GameplayView.js';
-import { renderProfileView } from './views/ProfileView.js';
-import { renderLeaderboardView } from './views/LeaderboardView.js';
-import { renderAchievementsView } from './views/AchievementsView.js';
-import { renderDailyChallengeView } from './views/DailyChallengeView.js';
-import { renderSettingsView } from './views/SettingsView.js';
-import { renderLevelEditorView, LevelEditorController } from './views/LevelEditorView.js';
+// Modular Page Views
+import { renderHomePage } from '../src/pages/HomePage.js';
+import { renderDashboardPage } from '../src/pages/DashboardPage.js';
+import { renderLevelSelectionPage } from '../src/pages/LevelSelectionPage.js';
+import { renderWorldMapPage } from '../src/pages/WorldMapPage.js';
+import { renderGameplayPage } from '../src/pages/GameplayPage.js';
+import { renderProfilePage } from '../src/pages/ProfilePage.js';
+import { renderLeaderboardPage } from '../src/pages/LeaderboardPage.js';
+import { renderAchievementsPage } from '../src/pages/AchievementsPage.js';
+import { renderDailyChallengePage } from '../src/pages/DailyChallengePage.js';
+import { renderSettingsPage } from '../src/pages/SettingsPage.js';
+import { renderUserManualPage, renderNotFoundPage } from '../src/pages/UserManualPage.js';
+import { GitHeroTutorialModal } from '../src/features/tutorial/GitHeroTutorialModal.js';
+
+// Auth Views
+import { renderLoginForm } from '../src/auth/views/LoginForm.js';
+import { renderRegisterForm } from '../src/auth/views/RegisterForm.js';
+import { renderForgotPasswordForm, renderResetPasswordForm } from '../src/auth/views/ForgotPasswordForm.js';
 
 class GitQuestApp {
   constructor() {
     this.currentRoute = 'hero';
-    this.currentLevelId = '07';
-    this.gameState = null;
-    this.gridEngine = null;
-    this.gitCli = null;
-    this.editor = new LevelEditorController();
-    this.leaderboardTab = 'global';
-    this.settingsCategory = 'general';
-    this.particleInterval = null;
-
-    // Load initial settings
-    const saved = StorageService.load();
-    soundFX.setMuted(!saved.settings.soundEffects);
-    soundFX.setVolume(saved.settings.volume / 100);
+    this.currentLevelId = '01';
+    this.adapter = new GameEngineAdapter();
+    this.terminalController = null;
+    this.cleanupConfetti = null;
+    this.authErrorMessage = '';
+    this.authSuccessMessage = '';
   }
 
-  init() {
-    // Handle URL hash changes
+  async init() {
+    // 1. Restore persistent user authentication session
+    await AuthManager.initialize();
+
+    // 2. Preload 250 levels and player progress into reactive LevelStore
+    await levelStore.loadLevelsAndProgress();
+
+    // 3. Load initial player profile data
+    if (authService.isAuthenticated()) {
+      await playerStore.loadPlayerProfile();
+    }
+
+    // 4. Global Hash Router Listener
     window.addEventListener('hashchange', () => {
       const hash = window.location.hash.replace('#', '') || 'hero';
       this.navigate(hash);
     });
 
-    // Global keyboard controls
+    // 5. Global Keyboard Shortcuts Listener
     window.addEventListener('keydown', (e) => this.handleGlobalKeyDown(e));
 
-    // Initial route
+    // 6. Navigate to initial route
     const initialHash = window.location.hash.replace('#', '') || 'hero';
     this.navigate(initialHash);
   }
 
-  navigate(route, params = {}) {
-    if (this.particleInterval) {
-      clearInterval(this.particleInterval);
-      this.particleInterval = null;
+  /**
+   * Route navigation with security access checking
+   */
+  async navigate(route, params = {}) {
+    if (this.cleanupConfetti) {
+      this.cleanupConfetti();
+      this.cleanupConfetti = null;
     }
 
-    if (this.gameState && route !== 'gameplay') {
-      this.gameState.stopTimer();
+    const access = AuthGuard.checkAccess(route);
+    if (!access.allowed) {
+      this.authErrorMessage = access.reason || 'Please authenticate to access this sector.';
+      this.currentRoute = access.redirect || 'login';
+      window.location.hash = this.currentRoute;
+      this.render();
+      return;
+    }
+
+    // Stop active engine timer if leaving gameplay
+    if (this.currentRoute === 'gameplay' && route !== 'gameplay') {
+      this.adapter.destroy();
     }
 
     this.currentRoute = route;
     window.location.hash = route;
+    uiStore.setRoute(route);
 
     if (route === 'gameplay') {
-      const targetLvl = params.levelId || this.currentLevelId || '07';
-      this.initGameplay(targetLvl, params.customLevel);
+      const targetLvl = params.levelId || this.currentLevelId || '01';
+      await this.initGameplay(targetLvl, params.customLevel);
+    } else if (route === 'leaderboard') {
+      await leaderboardStore.loadRankings();
+      this.render();
+    } else if (route === 'achievements') {
+      await achievementStore.loadAchievements();
+      this.render();
     } else {
       this.render();
     }
   }
 
-  initGameplay(levelId, customLevel = null) {
-    this.currentLevelId = levelId;
-    this.gameState = new GameState(levelId);
-    
-    if (customLevel) {
-      this.gameState.levelDef = customLevel;
-      this.gameState.player = { ...customLevel.player, dir: 'up' };
-      this.gameState.box = { ...customLevel.box };
-      this.gameState.goal = { ...customLevel.goal };
-      this.gameState.walls = [...customLevel.walls];
-      this.gameState.hazards = [...(customLevel.hazards || [])];
-      this.gameState.gridSize = customLevel.gridSize || 10;
-    }
+  /**
+   * Initialize gameplay session for level
+   */
+  async initGameplay(levelId, customLevel = null) {
+    this.currentLevelId = String(levelId || '01').padStart(2, '0');
 
-    this.gridEngine = new GridEngine(this.gameState, () => {
-      this.updateGameplayGrid();
+    // 1. Initialize GameEngineAdapter for level
+    const gameState = await this.adapter.initializeLevel(this.currentLevelId, customLevel);
+    gameStore.updateEngineState(gameState);
+
+    // 2. Setup Terminal Controller
+    this.terminalController = new TerminalController(this.adapter, {
+      onCommitSuccess: (state) => this.handleLevelComplete(state)
     });
 
-    this.gitCli = new GitCLI(this.gameState, this.gridEngine, {
-      onCommitSuccess: (state) => this.handleLevelComplete(state),
-      onSwitchLevel: (lvlId) => this.navigate('gameplay', { levelId: lvlId }),
-      onLogUpdate: () => this.updateTerminalOutput()
-    });
-
-    this.gameState.startTimer((formatted) => {
+    // 3. Bind live timer tick to HUD
+    this.adapter.onTimerTick((formattedTime) => {
       const timerEl = document.getElementById('game-live-timer');
-      if (timerEl) timerEl.textContent = formatted;
+      if (timerEl) timerEl.textContent = formattedTime;
+    });
+
+    // 4. Subscribe to reactive state updates
+    this.adapter.subscribe((state) => {
+      gameStore.updateEngineState(state);
+      const movesEl = document.getElementById('hud-moves-count');
+      if (movesEl) movesEl.textContent = state.moves;
+
+      const gridContainer = document.getElementById('game-puzzle-grid');
+      if (gridContainer && this.currentRoute === 'gameplay') {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = renderGameplayPage(state, this.terminalController?.logs || []);
+        const newGrid = tempDiv.querySelector('#game-puzzle-grid');
+        if (newGrid) {
+          gridContainer.replaceWith(newGrid);
+        }
+      }
     });
 
     this.render();
   }
 
+  /**
+   * Level completion event handler
+   */
   handleLevelComplete(state) {
-    this.gameState.stopTimer();
     const stats = {
-      time: state.getFormattedTime(),
-      commands: state.commandsCount,
+      levelId: state.levelId,
+      time: state.formattedTime,
+      moves: state.moves,
       pushCount: state.pushCount,
       pullCount: state.pullCount,
-      statusCount: state.statusCount,
-      moves: state.moves,
-      score: state.calculateScore(),
-      stars: state.moves <= (state.levelDef.commitsReq * 4) ? 3 : (state.moves <= (state.levelDef.commitsReq * 8) ? 2 : 1),
-      xpAwarded: state.levelDef.xpReward || 500
+      commands: state.commandsCount,
+      score: state.score,
+      stars: state.stars,
+      xpAwarded: state.xpReward
     };
 
-    // Save to storage
-    StorageService.completeLevel(state.levelId, stats);
-
-    // Show victory modal
-    const appContainer = document.getElementById('app-root');
-    const modalHtml = renderLevelCompleteModal(stats);
-    
-    const existingModal = document.getElementById('level-complete-overlay');
-    if (existingModal) existingModal.remove();
-
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = modalHtml;
-    appContainer.appendChild(tempDiv.firstElementChild);
-
-    this.particleInterval = initParticleSystem();
-
-    // Bind modal buttons
-    document.getElementById('modal-next-btn')?.addEventListener('click', () => {
-      const nextId = String(parseInt(state.levelId, 10) + 1).padStart(2, '0');
-      if (LEVELS[nextId]) {
-        this.navigate('gameplay', { levelId: nextId });
-      } else {
-        this.navigate('world-map');
-      }
-    });
-
-    document.getElementById('modal-replay-btn')?.addEventListener('click', () => {
-      this.navigate('gameplay', { levelId: state.levelId });
-    });
-
-    document.getElementById('modal-map-btn')?.addEventListener('click', () => {
-      this.navigate('world-map');
-    });
+    LevelVictoryHandler.handleCompletion(state.levelId, stats, (r, p) => this.navigate(r, p));
+    this.cleanupConfetti = ParticleEffects.startConfetti();
   }
 
+  /**
+   * Global keyboard navigation controls
+   */
   handleGlobalKeyDown(e) {
-    // If active input has focus in terminal or inputs, don't hijack WASD unless it's gameplay
-    const isInputFocused = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT');
+    const isInput = document.activeElement && (
+      document.activeElement.tagName === 'INPUT' ||
+      document.activeElement.tagName === 'TEXTAREA' ||
+      document.activeElement.tagName === 'SELECT'
+    );
 
-    if (this.currentRoute === 'gameplay' && this.gridEngine) {
-      if (isInputFocused && document.activeElement.id === 'terminal-cmd-input') {
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          document.activeElement.value = this.gitCli.getPreviousHistory();
-          return;
-        }
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          document.activeElement.value = this.gitCli.getNextHistory();
-          return;
-        }
-        return;
+    if (this.currentRoute === 'gameplay' && this.adapter) {
+      if (isInput && document.activeElement.id === 'terminal-cmd-input') {
+        return; // Terminal handles its own arrow keys
       }
 
-      // Movement keys
       let handled = false;
       if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
-        this.gridEngine.movePlayer(0, -1);
+        this.adapter.movePlayer('up');
+        soundService.playMove();
         handled = true;
       } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
-        this.gridEngine.movePlayer(0, 1);
+        this.adapter.movePlayer('down');
+        soundService.playMove();
         handled = true;
       } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        this.gridEngine.movePlayer(-1, 0);
+        this.adapter.movePlayer('left');
+        soundService.playMove();
         handled = true;
       } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        this.gridEngine.movePlayer(1, 0);
+        this.adapter.movePlayer('right');
+        soundService.playMove();
         handled = true;
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        this.gridEngine.undo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        this.adapter.undo();
         handled = true;
       }
 
@@ -204,317 +231,271 @@ class GitQuestApp {
     }
   }
 
-  updateGameplayGrid() {
-    if (this.currentRoute !== 'gameplay' || !this.gameState) return;
-    const gridEl = document.getElementById('game-puzzle-grid');
-    if (gridEl) {
-      gridEl.innerHTML = generateGridTilesHtml(this.gameState);
-    } else {
-      const viewContainer = document.getElementById('view-content-area');
-      if (viewContainer) {
-        viewContainer.innerHTML = renderGameplayView(this.gameState, this.gitCli);
-        this.bindGameplayEvents();
-      }
-    }
-  }
-
-  updateTerminalOutput() {
-    const terminalBody = document.getElementById('terminal-output-body');
-    if (!terminalBody || !this.gitCli) return;
-
-    terminalBody.innerHTML = this.gitCli.logs.map(log => {
-      if (log.type === 'cmd') {
-        return `<div class="flex items-center gap-2"><span class="text-primary font-bold">$</span><span class="text-on-surface">${log.text}</span></div>`;
-      }
-      if (log.type === 'status') {
-        return `
-          <div class="text-on-surface-variant pl-4 border-l-2 border-surface-variant my-1 space-y-0.5">
-            <div class="text-xs">On ${log.branch}</div>
-            <div class="text-on-surface text-sm">Objective: ${log.objective}</div>
-            <div class="${log.boxStatus.includes('READY') ? 'text-primary font-bold' : 'text-tertiary'} text-xs">Box: ${log.boxStatus}</div>
-            <div class="text-secondary text-xs">Progress: ${log.progress}</div>
-          </div>
-        `;
-      }
-      if (log.type === 'push' || log.type === 'pull') {
-        return `
-          <div class="text-on-surface-variant pl-4 my-1 space-y-0.5">
-            <div class="text-on-surface-variant text-xs">${log.detail}</div>
-            <div class="text-primary text-sm">${log.result}</div>
-          </div>
-        `;
-      }
-      if (log.type === 'commit_success') {
-        return `
-          <div class="text-primary pl-4 border-l-2 border-primary my-1 space-y-0.5">
-            <div class="font-bold">[${log.branch} ${log.commitHash}] ${log.message}</div>
-            <div class="text-xs text-on-surface-variant">${log.filesChanged}</div>
-          </div>
-        `;
-      }
-      if (log.type === 'error') {
-        return `<div class="text-error pl-4 text-xs font-terminal-code my-1">${log.text.replace(/\n/g, '<br/>')}</div>`;
-      }
-      return `<div class="text-on-surface-variant text-xs pl-4 font-terminal-code my-1">${(log.text || '').replace(/\n/g, '<br/>')}</div>`;
-    }).join('');
-
-    terminalBody.scrollTop = terminalBody.scrollHeight;
-  }
-
+  /**
+   * Main render method assembling App Shell and Active Page View
+   */
   render() {
     const appRoot = document.getElementById('app-root');
     if (!appRoot) return;
 
-    // 1. Render Top App Bar
+    const isGameplay = this.currentRoute === 'gameplay';
     const topBarHtml = renderTopAppBar(this.currentRoute);
 
-    // 2. Render Main View Content
-    let mainViewHtml = '';
-    const isGameplay = this.currentRoute === 'gameplay';
+    let mainContentHtml = '';
 
     switch (this.currentRoute) {
       case 'hero':
-        mainViewHtml = renderHeroView();
+      case 'home':
+        mainContentHtml = renderHomePage();
+        break;
+      case 'login':
+        mainContentHtml = renderLoginForm(this.authErrorMessage, this.authSuccessMessage);
+        break;
+      case 'register':
+        mainContentHtml = renderRegisterForm(this.authErrorMessage, this.authSuccessMessage);
+        break;
+      case 'forgot-password':
+        mainContentHtml = renderForgotPasswordForm(this.authErrorMessage, this.authSuccessMessage);
+        break;
+      case 'reset-password':
+        mainContentHtml = renderResetPasswordForm(this.authErrorMessage, this.authSuccessMessage);
         break;
       case 'dashboard':
       case 'main':
-        mainViewHtml = renderDashboardView();
-        break;
-      case 'world-map':
-        mainViewHtml = renderWorldMapView();
+        mainContentHtml = renderDashboardPage();
         break;
       case 'levels':
-        mainViewHtml = renderLevelSelectionView();
+        mainContentHtml = renderLevelSelectionPage();
+        break;
+      case 'world-map':
+        mainContentHtml = renderWorldMapPage();
         break;
       case 'gameplay':
-        mainViewHtml = renderGameplayView(this.gameState, this.gitCli);
+        mainContentHtml = renderGameplayPage(this.adapter?.getFrontendState(), this.terminalController?.logs || []);
         break;
       case 'profile':
-        mainViewHtml = renderProfileView();
+        mainContentHtml = renderProfilePage();
         break;
       case 'leaderboard':
-        mainViewHtml = renderLeaderboardView(this.leaderboardTab);
+        mainContentHtml = renderLeaderboardPage();
         break;
       case 'achievements':
-        mainViewHtml = renderAchievementsView();
+        mainContentHtml = renderAchievementsPage();
         break;
       case 'daily':
-        mainViewHtml = renderDailyChallengeView();
+        mainContentHtml = renderDailyChallengePage();
         break;
       case 'settings':
-        mainViewHtml = renderSettingsView(this.settingsCategory);
+        mainContentHtml = renderSettingsPage();
         break;
-      case 'editor':
-        mainViewHtml = renderLevelEditorView(this.editor);
+      case 'manual':
+        mainContentHtml = renderUserManualPage();
         break;
       default:
-        mainViewHtml = renderHeroView();
+        mainContentHtml = renderNotFoundPage();
         break;
     }
 
-    // 3. Render Bottom Navigation Bar
     const bottomNavHtml = renderBottomNavBar(isGameplay);
 
-    // Assemble Full Shell
     appRoot.innerHTML = `
       ${topBarHtml}
-      <div id="view-content-area">${mainViewHtml}</div>
+      <div id="view-content-area">${mainContentHtml}</div>
       ${bottomNavHtml}
     `;
 
-    // 4. Attach Event Listeners
-    this.bindGlobalEvents();
+    this.bindDOMEvents();
   }
 
-  bindGlobalEvents() {
-    // Top Bar Links
+  /**
+   * Bind event handlers to freshly rendered DOM
+   */
+  bindDOMEvents() {
+    // 1. Navigation Top Bar Links
     document.getElementById('brand-logo-btn')?.addEventListener('click', () => this.navigate('hero'));
     document.getElementById('nav-main-btn')?.addEventListener('click', () => this.navigate('dashboard'));
     document.getElementById('nav-logs-btn')?.addEventListener('click', () => this.navigate('leaderboard'));
     document.getElementById('nav-map-btn')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('nav-levels-btn')?.addEventListener('click', () => this.navigate('levels'));
-    document.getElementById('nav-editor-btn')?.addEventListener('click', () => this.navigate('editor'));
-
+    document.getElementById('nav-manual-btn')?.addEventListener('click', () => this.navigate('manual'));
+    document.getElementById('top-help-btn')?.addEventListener('click', () => this.navigate('manual'));
     document.getElementById('top-settings-btn')?.addEventListener('click', () => this.navigate('settings'));
     document.getElementById('top-profile-btn')?.addEventListener('click', () => this.navigate('profile'));
-    document.getElementById('top-pause-btn')?.addEventListener('click', () => soundFX.playKey());
-    document.getElementById('top-menu-btn')?.addEventListener('click', () => this.navigate('dashboard'));
 
-    // Mobile Bottom Nav Links
+    // Tutorial Launch Button (Accessible from Manual / Help)
+    document.getElementById('open-tutorial-btn')?.addEventListener('click', () => {
+      new GitHeroTutorialModal({
+        onComplete: () => this.navigate('gameplay', { levelId: '01' })
+      }).mount();
+    });
+
+    // First-time player tutorial onboarding
+    if ((this.currentRoute === 'dashboard' || this.currentRoute === 'hero') && AuthManager.isAuthenticated()) {
+      const tutorialModal = new GitHeroTutorialModal({
+        onComplete: () => this.navigate('gameplay', { levelId: '01' })
+      });
+      if (tutorialModal.isFirstTimePlayer()) {
+        setTimeout(() => tutorialModal.mount(), 400);
+      }
+    }
+
+    // 2. Mobile Bottom Nav Links
     document.getElementById('mob-nav-dash')?.addEventListener('click', () => this.navigate('dashboard'));
     document.getElementById('mob-nav-map')?.addEventListener('click', () => this.navigate('world-map'));
     document.getElementById('mob-nav-play')?.addEventListener('click', () => this.navigate('gameplay', { levelId: this.currentLevelId }));
+    document.getElementById('mob-nav-manual')?.addEventListener('click', () => this.navigate('manual'));
     document.getElementById('mob-nav-profile')?.addEventListener('click', () => this.navigate('profile'));
 
-    // View specific events
-    if (this.currentRoute === 'hero') {
-      document.getElementById('hero-play-btn')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
-      document.getElementById('hero-explore-btn')?.addEventListener('click', () => this.navigate('levels'));
-    } else if (this.currentRoute === 'dashboard' || this.currentRoute === 'main') {
-      document.getElementById('dash-continue-card')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
-      document.getElementById('dash-play-btn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.navigate('gameplay', { levelId: '07' });
-      });
-      document.getElementById('dash-world-progress')?.addEventListener('click', () => this.navigate('world-map'));
-      document.getElementById('dash-daily-card')?.addEventListener('click', () => this.navigate('daily'));
-    } else if (this.currentRoute === 'world-map') {
-      document.getElementById('node-world-1')?.addEventListener('click', () => this.navigate('levels'));
-      document.getElementById('node-world-2')?.addEventListener('click', () => this.navigate('levels'));
-      document.getElementById('node-world-3')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '07' }));
-    } else if (this.currentRoute === 'levels') {
-      document.querySelectorAll('[data-level-id]').forEach(el => {
-        el.addEventListener('click', () => {
-          const isUnlocked = el.getAttribute('data-unlocked') === 'true';
-          const lvlId = el.getAttribute('data-level-id');
-          if (isUnlocked) {
-            this.navigate('gameplay', { levelId: lvlId });
-          } else {
-            soundFX.playError();
-          }
-        });
-      });
-    } else if (this.currentRoute === 'gameplay') {
-      this.bindGameplayEvents();
-    } else if (this.currentRoute === 'leaderboard') {
-      document.getElementById('tab-global-btn')?.addEventListener('click', () => {
-        this.leaderboardTab = 'global';
-        this.render();
-      });
-      document.getElementById('tab-friends-btn')?.addEventListener('click', () => {
-        this.leaderboardTab = 'friends';
-        this.render();
-      });
-      document.getElementById('tab-weekly-btn')?.addEventListener('click', () => {
-        this.leaderboardTab = 'weekly';
-        this.render();
-      });
-    } else if (this.currentRoute === 'daily') {
-      document.getElementById('start-daily-btn')?.addEventListener('click', () => {
-        this.navigate('gameplay', { levelId: '07' });
-      });
-    } else if (this.currentRoute === 'settings') {
-      this.bindSettingsEvents();
-    } else if (this.currentRoute === 'editor') {
-      this.bindEditorEvents();
-    }
-  }
-
-  bindGameplayEvents() {
-    // Terminal input form
-    const form = document.getElementById('terminal-input-form');
-    const input = document.getElementById('terminal-cmd-input');
-    
-    if (form && input) {
-      form.addEventListener('submit', (e) => {
+    // 3. Auth Form Submissions
+    const loginForm = document.getElementById('auth-login-form');
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const cmd = input.value;
-        input.value = '';
-        if (this.gitCli) {
-          this.gitCli.execute(cmd);
+        const usernameOrEmail = document.getElementById('login-username')?.value;
+        const password = document.getElementById('login-password')?.value;
+        const res = await AuthManager.login(usernameOrEmail, password);
+        if (res.success) {
+          this.authErrorMessage = '';
+          this.authSuccessMessage = '';
+          this.navigate(res.nextRoute || 'dashboard');
+        } else {
+          this.authErrorMessage = res.error || 'Authentication rejected.';
+          this.render();
         }
       });
     }
 
-    // Reset & Undo buttons
-    document.getElementById('btn-reset-level')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.reset();
-    });
-    document.getElementById('btn-undo-move')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.undo();
-    });
+    const registerForm = document.getElementById('auth-register-form');
+    if (registerForm) {
+      registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('register-username')?.value;
+        const email = document.getElementById('register-email')?.value;
+        const password = document.getElementById('register-password')?.value;
+        const confirm = document.getElementById('register-confirm-password')?.value;
 
-    // 4-Way Movement D-Pad Controls (Up, Down, Left, Right)
-    document.getElementById('btn-dpad-up')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('up');
-    });
-    document.getElementById('btn-dpad-down')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('down');
-    });
-    document.getElementById('btn-dpad-left')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('left');
-    });
-    document.getElementById('btn-dpad-right')?.addEventListener('click', () => {
-      if (this.gridEngine) this.gridEngine.moveDirection('right');
-    });
+        if (password !== confirm) {
+          this.authErrorMessage = 'Passwords do not match.';
+          this.render();
+          return;
+        }
 
-    // Auto-focus terminal on desktop
-    if (window.innerWidth > 768 && input) {
-      input.focus();
+        const res = await AuthManager.register(username, email, password);
+        if (res.success) {
+          this.authErrorMessage = '';
+          this.authSuccessMessage = 'Registration complete! Welcome to Sector 01.';
+          this.navigate('dashboard');
+        } else {
+          this.authErrorMessage = res.error || 'Registration failed.';
+          this.render();
+        }
+      });
     }
-  }
 
-  bindSettingsEvents() {
-    const soundToggle = document.getElementById('toggle-sound');
-    const volSlider = document.getElementById('slider-volume');
-    const volDisplay = document.getElementById('volume-val-display');
-    const langSelect = document.getElementById('setting-language');
-    const themeSelect = document.getElementById('setting-theme');
-
-    soundToggle?.addEventListener('change', (e) => {
-      const enabled = e.target.checked;
-      soundFX.setMuted(!enabled);
-      StorageService.updateSettings({ soundEffects: enabled });
-      soundFX.playKey();
+    document.getElementById('profile-logout-btn')?.addEventListener('click', async () => {
+      await AuthManager.logout();
+      this.navigate('login');
     });
 
-    volSlider?.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      if (volDisplay) volDisplay.textContent = `${val}%`;
-      soundFX.setVolume(val / 100);
-      StorageService.updateSettings({ volume: val });
+    // 4. Hero Actions
+    document.getElementById('hero-play-btn')?.addEventListener('click', () => this.navigate('gameplay', { levelId: '01' }));
+    document.getElementById('hero-explore-btn')?.addEventListener('click', () => this.navigate('levels'));
+
+    // 5. Dashboard Actions
+    document.getElementById('dash-continue-btn')?.addEventListener('click', (e) => {
+      const lvl = e.currentTarget.getAttribute('data-continue-level') || '01';
+      this.navigate('gameplay', { levelId: lvl });
+    });
+    document.getElementById('dash-daily-card')?.addEventListener('click', () => this.navigate('daily'));
+    document.getElementById('dash-levels-card')?.addEventListener('click', () => this.navigate('levels'));
+
+    // 6. Level Selection Clicks
+    document.querySelectorAll('[data-level-id]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const isUnlocked = el.getAttribute('data-unlocked') === 'true';
+        const lvlId = el.getAttribute('data-level-id');
+        if (isUnlocked) {
+          this.navigate('gameplay', { levelId: lvlId });
+        } else {
+          soundService.playError();
+        }
+      });
     });
 
-    langSelect?.addEventListener('change', (e) => {
-      StorageService.updateSettings({ language: e.target.value });
-      soundFX.playKey();
-    });
-
-    themeSelect?.addEventListener('change', (e) => {
-      StorageService.updateSettings({ theme: e.target.value });
-      soundFX.playKey();
-    });
-  }
-
-  bindEditorEvents() {
-    // Tool buttons
-    document.querySelectorAll('.editor-tool-btn').forEach(btn => {
+    // World Filter Pills
+    document.querySelectorAll('[data-world-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const tool = btn.getAttribute('data-tool-id');
-        this.editor.setTool(tool);
+        const world = btn.getAttribute('data-world-tab');
+        levelStore.setWorldFilter(world);
         this.render();
       });
     });
 
-    // Grid cells
-    document.querySelectorAll('.editor-cell').forEach(cell => {
-      cell.addEventListener('click', () => {
-        const x = parseInt(cell.getAttribute('data-cell-x'), 10);
-        const y = parseInt(cell.getAttribute('data-cell-y'), 10);
-        this.editor.handleCellClick(x, y);
+    // Levels Search
+    const searchInput = document.getElementById('levels-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        levelStore.setSearchQuery(e.target.value);
         this.render();
+        const reInput = document.getElementById('levels-search-input');
+        if (reInput) {
+          reInput.focus();
+          reInput.setSelectionRange(reInput.value.length, reInput.value.length);
+        }
+      });
+    }
+
+    // 7. World Map Nodes
+    document.querySelectorAll('[data-world-node]').forEach((node) => {
+      node.addEventListener('click', () => {
+        const worldNum = node.getAttribute('data-world-node');
+        levelStore.setWorldFilter(worldNum);
+        this.navigate('levels');
       });
     });
 
-    // Clear
-    document.getElementById('editor-clear-btn')?.addEventListener('click', () => {
-      this.editor.clear();
-      this.render();
+    // 8. Gameplay View Events
+    if (this.currentRoute === 'gameplay') {
+      if (this.terminalController) {
+        this.terminalController.mount();
+      }
+      GameControls.bindEvents(this.adapter);
+
+      document.getElementById('btn-reset-level')?.addEventListener('click', () => {
+        if (this.adapter) this.adapter.reset();
+      });
+      document.getElementById('btn-undo-move')?.addEventListener('click', () => {
+        if (this.adapter) this.adapter.undo();
+      });
+    }
+
+    // 9. Daily Challenge Launch
+    document.getElementById('start-daily-btn')?.addEventListener('click', () => {
+      this.navigate('gameplay', { levelId: '01' });
     });
 
-    // Test Level
-    const runTest = () => {
-      const customLevel = this.editor.exportLevel();
-      this.navigate('gameplay', { levelId: 'CUSTOM', customLevel });
-    };
+    // 10. Settings Events
+    document.getElementById('toggle-sound')?.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      soundService.setMuted(!enabled);
+      playerStore.updateSettings({ soundEffects: enabled });
+      soundService.playKey();
+    });
 
-    document.getElementById('editor-test-btn')?.addEventListener('click', runTest);
-    document.getElementById('editor-mob-test')?.addEventListener('click', runTest);
+    document.getElementById('slider-volume')?.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      const display = document.getElementById('volume-val-display');
+      if (display) display.textContent = `${val}%`;
+      soundService.setVolume(val / 100);
+      playerStore.updateSettings({ volume: val });
+    });
   }
 }
 
-// Bootstrap GitQuest application
+// Bootstrap GitQuest Application on DOM Load
 window.addEventListener('DOMContentLoaded', () => {
   const app = new GitQuestApp();
   app.init();
 });
+
+export default GitQuestApp;
